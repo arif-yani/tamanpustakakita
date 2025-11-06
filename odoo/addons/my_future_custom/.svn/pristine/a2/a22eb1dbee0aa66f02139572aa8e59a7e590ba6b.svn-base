@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="view_my_future_summary_product_form" model="ir.ui.view">
+            <field name="name">my.future.summary.product.views</field>
+            <field name="model">my.future.summary.product.keep</field>
+            <field name="type">form</field>
+            <field name="arch" type="xml">
+                <form string="Get Order By Date">
+	                 <label for="start_date" string="Date"/>
+	                <div class="o_row mw-50" name="start_date">
+	                    <field name="start_date" class="oe_inline o_hr_narrow_field" nolabel="1"/>-
+	                    <field name="end_date" class="oe_inline o_hr_narrow_field" nolabel="1"/>
+	                </div>
+                    <footer>
+                        <button name="action_summary_product_keep" string="Print" type="object" class="oe_highlight"/>
+                        <button string="Cancel" class="oe_link" special="cancel" />
+                    </footer>
+                </form>
+            </field>
+        </record>
+
+        <record id="action_my_future_summary_product" model="ir.actions.act_window">
+            <field name="name">Summary Product Keep</field>
+            <field name="res_model">my.future.summary.product.keep</field>
+            <field name="view_mode">form</field>
+            <field name="target">new</field>
+            <field name="view_id" ref="view_my_future_summary_product_form"/>
+        </record>
+        
+    </data>
+</odoo>

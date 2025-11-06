@@ -1,0 +1,25 @@
+from odoo import api, fields, models
+import time
+from datetime import datetime, timedelta
+import requests
+import json
+from odoo.exceptions import UserError, ValidationError
+
+class my_future_facebook_keep_order(models.Model):
+    _name = "my.future.keep.order"
+    _description = "Keep Order"
+
+    partner_id = fields.Many2one('res.partner', 'Customer')
+    keep_datetime = fields.Datetime('Keep Datetime')
+    product_id = fields.Many2one('product.product', 'Product')
+    size_id = fields.Many2one("my.future.product.size", string="Size")
+    price = fields.Float('Price', related='product_id.lst_price', readonly=False)
+    quantity = fields.Float('PCS')
+    get_product = fields.Selection([('dapat','Dapat'), ('tidak','Tidak')], string="Dapat Product")
+    state = fields.Selection([('keep','Keep'),('done','Done'),('waiting_wa','Waiting For WA'),], string="Status", default="keep")
+    comment_id = fields.Many2one('sgeede.facebook.comment', string="Comment ID")
+    post_id = fields.Many2one('sgeede.facebook.post', string="Post ID", related="comment_id.post_id")
+    mobile = fields.Char('No Whatsapp', related="partner_id.mobile")
+
+
+  

@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+
+    <menuitem id="menu_sgeede_facebook"
+        name="Facebook"
+        web_icon="sgeede_facebook_int,static/description/icon.png"
+        sequence="400">
+
+         <menuitem name="Facebook" 
+        id="menu_sgeede_facebook_activity" 
+        sequence="80">
+
+            <menuitem name="Facebook Live" 
+            id="menu_sgeede_facebook_live" 
+            action="action_sgeede_facebook_live" 
+            sequence="5"/>
+
+            <menuitem name="Facebook Post" 
+            id="menu_sgeede_facebook_post" 
+            action="action_sgeede_facebook_post" 
+            sequence="8"/>
+
+            <menuitem name="Comment" 
+            id="menu_sgeede_facebook_comment" 
+            action="action_sgeede_facebook_comment" 
+            sequence="10"/>
+
+        </menuitem>
+
+
+        <menuitem name="Sync From Facebook" 
+        id="menu_sgeede_facebook_sync" 
+        sequence="90">
+
+            <menuitem name="Get Post" 
+            id="menu_sgeede_facebook_get_post" 
+            action="action_sgeede_facebook_get_post" 
+            sequence="20"/>
+
+        </menuitem>
+
+        <menuitem name="Configuration" 
+        id="menu_sgeede_facebook_config" 
+        sequence="100">
+            <menuitem name="Api Logs" 
+            id="menu_sgeede_facebook_api_log" 
+            action="action_sgeede_facebook_api_log" 
+            groups="base.group_no_one"
+            sequence="5"/>
+
+
+            <menuitem name="Facebook Page" 
+            id="menu_sgeede_facebook_page" 
+            action="action_sgeede_facebook_page" 
+            sequence="10"/>
+
+        </menuitem>
+
+       
+
+
+    </menuitem>
+
+
+</odoo>

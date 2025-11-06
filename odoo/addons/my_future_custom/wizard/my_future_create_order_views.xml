@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="view_my_future_create_order_form" model="ir.ui.view">
+            <field name="name">my.future.create.order.views</field>
+            <field name="model">my.future.create.order</field>
+            <field name="type">form</field>
+            <field name="arch" type="xml">
+                <form string="Create Totalan">
+	                 <!-- <label for="start_date" string="Date"/>
+	                <div class="o_row mw-50" name="start_date">
+	                    <field name="start_date" class="oe_inline o_hr_narrow_field" nolabel="1"/>-
+	                    <field name="end_date" class="oe_inline o_hr_narrow_field" nolabel="1"/>
+	                </div> -->
+	                <field name="product_ids" widget="many2many_tags"/>
+                    <footer>
+                        <button name="create_total_order" string="Create" type="object" class="oe_highlight"/>
+                        <button string="Cancel" class="oe_link" special="cancel" />
+                    </footer>
+                </form>
+            </field>
+        </record>
+
+        <record id="action_my_future_create_order" model="ir.actions.act_window">
+            <field name="name">Create Order</field>
+            <field name="res_model">my.future.create.order</field>
+            <field name="view_mode">form</field>
+            <field name="target">new</field>
+            <field name="view_id" ref="view_my_future_create_order_form"/>
+        </record>
+        
+    </data>
+</odoo>

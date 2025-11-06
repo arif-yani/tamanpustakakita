@@ -1,0 +1,4 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+
+access_my_future_keep_order,my.future.keep.order,model_my_future_keep_order,,1,1,1,1
+access_my_future_product_size,my.future.product.size,model_my_future_product_size,,1,1,1,1

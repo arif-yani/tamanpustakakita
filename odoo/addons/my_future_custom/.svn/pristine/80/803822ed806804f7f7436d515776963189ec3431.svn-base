@@ -1,0 +1,30 @@
+from odoo import api, fields, models
+import time
+from datetime import datetime, timedelta
+import requests
+import json
+from odoo.exceptions import UserError, ValidationError
+
+class myfuture_paket(models.Model):
+    _name = "myfuture.paket"
+    _description = "My Future Paket"
+
+    name = fields.Char('Nama')
+    weight = fields.Float('Berat')
+    remark = fields.Char('Catatan')
+    is_titipan = fields.Boolean("Titipan", default=False)
+    move_id = fields.Many2one('account.move', 'Move ID')
+
+
+
+class myfuture_sent_paket(models.Model):
+    _name = "myfuture.sent.paket"
+
+    name = fields.Char('Nama')
+    paket_id = fields.Many2one("myfuture.paket", "Paket ID")
+    check_out_time = fields.Datetime("Check Out Time")
+    state = fields.Selection([('draft','Draft'),('check_in','Check In'),('sent','Sent')])
+    weight = fields.Float('Berat', related="paket_id.weight")
+    sent_to = fields.Selection([('batam','Batam'), ('luar_batam','Luar Batam')])
+    kecamatan_id = fields.Many2one("myfuture.kecamatan", "Location")
+    remark = fields.Char('Catatan', related="paket_id.remark")

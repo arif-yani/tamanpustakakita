@@ -1,0 +1,41 @@
+from odoo import api, fields, models
+import time
+from datetime import datetime, timedelta
+import requests
+import html2text
+import json
+from odoo.exceptions import UserError, ValidationError
+
+class my_future_facebook_keep_order(models.Model):
+    _name = "my.future.keep.order"
+    _description = "Keep Order"
+
+    partner_id = fields.Many2one('res.partner', 'Customer')
+    keep_datetime = fields.Datetime('Keep Datetime')
+    product_id = fields.Many2one('product.product', 'Product')
+    size_id = fields.Many2one("my.future.product.size", string="Size")
+    price = fields.Float('Price', related='product_id.lst_price', readonly=False)
+    quantity = fields.Integer('PCS')
+    get_product = fields.Selection([('dapat','Dapat'), ('tidak','Tidak')], string="Dapat Product")
+    state = fields.Selection([('keep','Keep'),('totalan','Totalan'),('order_supplier','Order Dengan Supplier'),
+                              ('waiting_wa','Waiting For WA'),], string="Status", default="keep")
+    comment_id = fields.Many2one('sgeede.facebook.comment', string="Comment ID")
+    post_id = fields.Many2one('sgeede.facebook.post', string="Post ID", related="comment_id.post_id")
+    mobile = fields.Char('No Whatsapp', related="partner_id.mobile")
+    is_confirmed = fields.Boolean("Confirmed to customer", default=False)
+
+
+  
+    def action_update_keep_order(self):
+        view_id = self.env.ref('my_future_custom.myfuture_update_keep_form').id,
+        return {
+			'name': 'Update Keep Order',
+			'type': 'ir.actions.act_window',
+			'view_mode': 'form',
+			"view_type": "form",
+			'res_model': 'update.keep.order',
+			'target': 'new',
+			'view_id': view_id,
+		}
+
+

@@ -1,0 +1,51 @@
+from odoo import api, fields, models, tools, _
+from odoo.exceptions import UserError, ValidationError
+from datetime import date, datetime, timedelta
+
+class my_future_create_order(models.TransientModel):
+    _name = "my.future.create.order"
+
+    start_date = fields.Date(string="Start Date", required=True)
+    end_date = fields.Date(string="End Date", required=True)
+
+
+    def create_total_order(self):
+        keep_order_group_customer = {
+                customer
+                for customer, count in self.env['my.future.keep.order']._read_group(
+                    domain=[('state', '=', 'keep'), ('get_product', '=', 'dapat'),('keep_datetime', '>=', self.start_date),('keep_datetime', '<=', self.end_date)],
+                    groupby=['partner_id'],
+                    aggregates=['__count'],
+                )
+            }
+        if keep_order_group_customer:
+            for partner_id in keep_order_group_customer:
+                keep_obj = self.env['my.future.keep.order'].search([('partner_id','=',partner_id.id), ('get_product', '=', 'dapat'),('keep_datetime', '>=', self.start_date),('keep_datetime', '<=', self.end_date)])
+                sales_obj = self.env['sale.order'].create({
+                    'partner_id': partner_id.id,
+                    'is_keep_order': True,
+                    'wizard_create_id': self.id,
+                })
+                for keep in keep_obj:
+                    if keep.product_id:
+                        self.env['sale.order.line'].create({
+                            'product_id': keep.product_id.id,
+                            'product_uom_qty': keep.quantity,
+                            'order_id': sales_obj.id,
+                            'size_id': keep.size_id.id,
+                            'keep_id': keep.id,
+                            'comment_id': keep.comment_id.id,
+                        })
+                    else:
+                        continue
+            return {
+                    'type': 'ir.actions.act_window',
+                    'name': ('Sale Orders'),
+                    'res_model': 'sale.order',
+                    'view_type': 'form',
+                    'view_mode': 'tree,form',
+                    'domain': [('wizard_create_id','=',self.id)],
+                    'context':{},
+                }
+        else:
+            raise UserError('No keep order to create sale order!')

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+
+    <record id="payment_provider_midtrans" model="payment.provider">
+        <field name="name">Midtrans</field>       
+        <!-- <field name="module_id" ref="sgeede_payment_midtrans.module_payment_midtrans"/> -->
+        <field name="code">midtrans</field>
+        <field name="redirect_form_view_id" ref="sgeede_payment_midtrans.redirect_form"/>
+    </record>
+</odoo>

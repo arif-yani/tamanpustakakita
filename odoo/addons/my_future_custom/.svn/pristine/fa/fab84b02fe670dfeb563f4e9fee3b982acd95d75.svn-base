@@ -1,0 +1,58 @@
+from odoo import api, fields, models, tools, _
+from odoo.exceptions import UserError, ValidationError
+
+class AccountMove(models.Model):
+    _inherit = "account.move"
+
+    titipan = fields.Char("Titipan")
+    harga_ongkir = fields.Monetary("Ongkir Per KG", )
+    hutang = fields.Monetary("Sisa Hutang", compute="_compute_sisa_hutang")
+    sisa_dp = fields.Monetary("Sisa DP", compute="_compute_sisa_dp")
+
+    @api.depends("partner_id")
+    def _compute_sisa_hutang(self):
+        for line in self:
+            hutang = 0
+            if line.partner_id.unreconciled_aml_ids:
+                for unreconciled in line.partner_id.unreconciled_aml_ids:
+                    if unreconciled.amount_residual_currency > 0 and unreconciled.move_id.id != line.id:
+                        hutang += unreconciled.amount_residual_currency
+                line.hutang =  hutang
+            else:
+                line.hutang = 0
+
+    @api.depends("partner_id")
+    def _compute_sisa_dp(self):
+        for line in self:
+            sisa_dp = 0
+            if line.partner_id.unreconciled_aml_ids:
+                for unreconciled in line.partner_id.unreconciled_aml_ids:
+                    if unreconciled.amount_residual_currency < 0:
+                        sisa_dp += abs(unreconciled.amount_residual_currency)
+                line.sisa_dp =  sisa_dp
+            else:
+                line.sisa_dp = 0
+
+
+class AccountPayment(models.Model):
+    _inherit = 'account.payment'
+
+    mobile = fields.Char('No Whatsapp', related="partner_id.mobile", readonly=False)
+    partner_id = fields.Many2one(
+        comodel_name='res.partner',
+        string="Customer",
+        store=True, readonly=False, ondelete='restrict',
+        compute='_compute_partner_id',
+        domain="['|', ('parent_id','=', False), ('is_company','=', True)]",
+        tracking=True,
+        check_company=True)
+    
+
+class AccountMoveLine(models.Model):
+    _inherit = "account.move.line"
+
+    keep_id = fields.Many2one('my.future.keep.order', 'Keep ID')
+    comment_id = fields.Many2one('sgeede.facebook.comment', 'Comment ID')
+    size_id = fields.Many2one('my.future.product.size', 'Size', related="sale_line_ids.size_id")
+    color = fields.Char("Warna", related="product_id.color")
+    weight = fields.Float("Berat", related="product_id.weight")

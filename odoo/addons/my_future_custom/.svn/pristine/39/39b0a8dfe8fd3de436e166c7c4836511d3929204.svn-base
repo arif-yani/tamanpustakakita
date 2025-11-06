@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+	<record id="view_partner_form_inherit_my_future" model="ir.ui.view">
+            <field name="name">view.partner.form.inherit.my.future</field>
+            <field name="model">res.partner</field>
+            <field name="inherit_id" ref="base.view_partner_form"/>
+            <field name="arch" type="xml">
+                <xpath expr="//field[@name='category_id']" position="after">
+                    <field name="total_titipan"/>
+                    <field name="is_blacklist_customer" widget="boolean_toggle"/>
+                    <field name="can_interaction" widget="boolean_toggle"/>
+                    <field name="is_announced"/>
+                    <field name="invoice_link_download" widget="url" invisible="1"/>
+                    <field name="payment_link" widget="url" invisible="1"/>
+                    <field name="payment_link_overdue" widget="url" invisible="1"/>
+                </xpath>
+                <xpath expr="//field[@name='phone']" position="attributes">
+                    <attribute name="invisible">1</attribute>
+                </xpath>
+
+                <xpath expr="//div[@class='o_address_format']" position="replace">
+                    <div class="o_address_format">
+                        <field name="street" placeholder="Street..." class="o_address_street" readonly="type == 'contact' and parent_id"/>
+                        <field name="kecamatan_id" placeholder="Kecamatan" class="o_address_street" readonly="type == 'contact' and parent_id"/>
+                        <field name="street2"  invisible="1" placeholder="Street 2..." class="o_address_street" readonly="type == 'contact' and parent_id"/>
+                        <field name="kota_id" placeholder="Kabupaten/Kota" class="o_address_city" readonly="type == 'contact' and parent_id"/>
+                        <field name="city" invisible="1" placeholder="City" class="o_address_city" readonly="type == 'contact' and parent_id"/>
+                        <field name="provinsi_id" class="o_address_city" placeholder="Provinsi" options="{'no_open': True, 'no_quick_create': True}" readonly="type == 'contact' and parent_id" context="{'country_id': country_id, 'default_country_id': country_id, 'zip': zip}"/>
+                        <field name="state_id" invisible="1" class="o_address_state" placeholder="State" options="{'no_open': True, 'no_quick_create': True}" readonly="type == 'contact' and parent_id" context="{'country_id': country_id, 'default_country_id': country_id, 'zip': zip}"/>
+                        <field name="zip" placeholder="ZIP" class="o_address_zip" readonly="type == 'contact' and parent_id"/>
+                        <div name="partner_address_country" class="d-flex justify-content-between">
+                            <field name="country_id" placeholder="Country" class="o_address_country" options="{&quot;no_open&quot;: True, &quot;no_create&quot;: True}" readonly="type == 'contact' and parent_id"/>
+                        </div>
+                    </div>
+                </xpath>
+            </field>
+    </record>
+
+    <record id="myfuture_kecamatan" model="ir.ui.view">
+        <field name="name">myfuture.kecamatan.tree</field>
+        <field name="model">myfuture.kecamatan</field>
+        <field name="priority">1000</field>
+        <field name="arch" type="xml">
+            <tree class="o_sale_order"
+                  string="Kecamatan" create="1" editable="bottom" default_order="provinsi_id">
+                <header>
+                </header>
+                <field name="code"/>
+                <field name="name"/>
+                <field name="kota_id"/>
+                <field name="provinsi_id" />
+            </tree>
+        </field>
+    </record>
+
+
+    <record id="myfuture_ongkir" model="ir.ui.view">
+        <field name="name">myfuture.ongkir.tree</field>
+        <field name="model">myfuture.ongkir</field>
+        <field name="priority">1000</field>
+        <field name="arch" type="xml">
+            <tree class="o_sale_order"
+                  string="ongkir" create="1" editable="bottom" default_order="provinsi_id">
+                <field name="kecamatan_id"/>
+                <field name="price"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="myfuture_kota" model="ir.ui.view">
+        <field name="name">myfuture.kota.tree</field>
+        <field name="model">myfuture.kota</field>
+        <field name="priority">1000</field>
+        <field name="arch" type="xml">
+            <tree class="o_sale_order"
+                  string="Kabupaten/Kota" create="1" editable="bottom" default_order="provinsi_id">
+                <header>
+                </header>
+                <field name="code"/>
+                <field name="name"/>
+                <field name="provinsi_id" />
+            </tree>
+        </field>
+    </record>
+
+    <record id="myfuture_provinsi" model="ir.ui.view">
+        <field name="name">myfuture.provinsi.tree</field>
+        <field name="model">myfuture.provinsi</field>
+        <field name="priority">1000</field>
+        <field name="arch" type="xml">
+            <tree class="o_sale_order"
+                  string="Provinsi" create="1" editable="bottom" default_order="name">
+                <header>
+                </header>
+                <field name="code"/>
+                <field name="name"/>
+            </tree>
+        </field>
+    </record>
+
+
+    <record id="action_myfuture_kecamatan" model="ir.actions.act_window">
+        <field name="name">Kecamatan</field>
+        <field name="res_model">myfuture.kecamatan</field>
+        <field name="type">ir.actions.act_window</field>
+        <field name="view_id" ref="myfuture_kecamatan"/>
+        <field name="view_mode">tree</field>
+        <field name="context">{}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+            Create a Kecamatan!
+            </p>
+        </field>
+    </record>
+
+    <record id="action_myfuture_kota" model="ir.actions.act_window">
+        <field name="name">Kabupaten/Kota</field>
+        <field name="res_model">myfuture.kota</field>
+        <field name="type">ir.actions.act_window</field>
+        <field name="view_id" ref="myfuture_kota"/>
+        <field name="view_mode">tree</field>
+        <field name="context">{}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+            Create a kota!
+            </p>
+        </field>
+    </record>
+
+    <record id="action_myfuture_provinsi" model="ir.actions.act_window">
+        <field name="name">Provinsi</field>
+        <field name="res_model">myfuture.provinsi</field>
+        <field name="type">ir.actions.act_window</field>
+        <field name="view_id" ref="myfuture_provinsi"/>
+        <field name="view_mode">tree</field>
+        <field name="context">{}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+            Create a provinsi!
+            </p>
+        </field>
+    </record>
+
+    <record id="action_get_provinsi" model="ir.actions.server">
+        <field name="name">Get Provinsi</field>
+        <field name="type">ir.actions.server</field>
+        <field name="model_id" ref="model_myfuture_kota"/>
+        <field name="binding_model_id" ref="model_myfuture_kota"/>
+        <field name="state">code</field>
+        <field name="code">action = model.get_provinsi()</field>
+    </record>
+
+    <record id="action_get_kota" model="ir.actions.server">
+        <field name="name">Get kota</field>
+        <field name="type">ir.actions.server</field>
+        <field name="model_id" ref="model_myfuture_kecamatan"/>
+        <field name="binding_model_id" ref="model_myfuture_kecamatan"/>
+        <field name="state">code</field>
+        <field name="code">action = model.get_kota()</field>
+    </record>
+
+    <record id="action_myfuture_ongkir" model="ir.actions.act_window">
+        <field name="name">ongkir</field>
+        <field name="res_model">myfuture.ongkir</field>
+        <field name="type">ir.actions.act_window</field>
+        <field name="view_id" ref="myfuture_ongkir"/>
+        <field name="view_mode">tree</field>
+        <field name="context">{}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+            Create a ongkir!
+            </p>
+        </field>
+    </record>
+</odoo>

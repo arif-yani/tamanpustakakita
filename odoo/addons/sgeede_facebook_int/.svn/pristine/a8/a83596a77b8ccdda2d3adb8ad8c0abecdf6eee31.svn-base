@@ -1,0 +1,159 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_live_form" model="ir.ui.view">
+        <field name="name">sgeede.facebook.live.form</field>
+        <field name="model">sgeede.facebook.live</field>
+        <field name="arch" type="xml">
+            <form string="Facebook Live" class="o_sale_order">
+            <header>
+                <button name="start_post_live" type="object"
+                        string="Start Live" class="oe_highlight"
+                        invisible="state in ['live', 'cancel', 'done']"/>
+                <button name="end_post_live" type="object"
+                        string="End Live"
+                        invisible="state in ['cancel', 'done','draft']"/>
+                <field name="state" widget="statusbar" statusbar_visible="draft,live,done"/>
+            </header>
+            <sheet>
+                 <div class="oe_button_box" name="button_box">
+                    <button name="action_read_all_comments"
+                        class="oe_stat_button"
+                        icon="fa-bars"
+                        type="object"
+                        help="List view of comments">
+                        <div class="o_field_widget o_stat_info">
+                            <span class="o_stat_value d-flex gap-1">
+                                <field name="sum_comment" nolabel="1" class="oe_inline"/>
+                            </span>
+                            <span class="o_stat_text">Comment</span>
+                    </div>
+                    </button>
+                 </div>
+                <div class="oe_title">
+                    <h1>
+                        <field name="name" readonly="state in ['cancel', 'done']"/>
+                    </h1>
+                </div>
+                <group name="live_header">
+                    <group name="live_details">
+                        <field name="partner_id" readonly="state in ['cancel', 'done']"/>
+                        <field name="facebook_live_id" readonly="state in ['cancel', 'done']"/>
+                        <field name="page_id" readonly="state in ['cancel', 'done']"/>
+                    </group>
+                    <group name="live_time">
+                        <field name="start_live" readonly="1" force_save="1"/>
+                        <field name="end_live" readonly="1" force_save="1"/>
+                        <field name="live_date" invisible="1"/>
+                        <field name="duration" widget="float_time" readonly="state in ['cancel', 'done']"/>
+                        <field name="valid_comment_tmpl_id"/>
+                    </group>
+                </group>
+                <notebook>
+                    <page string="Active Product" name="active_product">
+                        <field
+                            name="line_ids"
+                            widget="section_and_note_one2many"
+                            mode="tree,kanban"
+                            readonly="state == 'cancel'">
+                            <tree
+                                string="Active Product Lines"
+                                editable="bottom"
+                                limit="200"
+                            >
+
+                                <field name="sequence" widget="handle" />
+                                <!-- We do not display the type because we don't want the user to be bothered with that information if he has no section or note. -->
+                                <field
+                                    name="product_id"
+                                    widget="sol_product_many2one"/>
+                                <field name="product_template_id"
+                                    string="Product"
+                                    column_invisible="True"
+                                    widget="sol_product_many2one"
+                                    placeholder="Type to find a product..."/>
+                                <field name="name" widget="section_and_note_text" optional="show"/>
+                                <field name="product_code" widget="many2many_tags" optional="show"/>
+                                <field name="product_qty"/>
+                                <field
+                                    name="product_uom_id"
+                                    force_save="1"
+                                    string="UoM"
+                                    groups="uom.group_uom"
+                                    options='{"no_open": True}'/>
+                            </tree>
+                        </field>
+                    </page>
+                </notebook>
+            </sheet>
+             <div class="oe_chatter">
+                <field name="message_follower_ids" groups="base.group_user"/>
+                <field name="activity_ids"/>
+                <field name="message_ids"/>
+            </div>
+            </form>
+        </field>
+    </record>
+
+   
+
+    <record id="sgeede_facebook_live_tree" model="ir.ui.view">
+        <field name="name">sgeede.facebook.live.tree</field>
+        <field name="model">sgeede.facebook.live</field>
+        <field name="priority">1000</field>
+        <field name="arch" type="xml">
+            <tree class="o_sale_order"
+                  string="Facebook Live"
+                  sample="1"
+                  decoration-muted="state == 'cancel'">
+                <field name="name" string="Name" readonly="1" decoration-bf="1"/>
+                <field name="start_live" optional="show" readonly="state in ['cancel', 'sale']"/>
+                <field name="end_live" optional="show" readonly="state in ['cancel', 'sale']"/>
+                <field name="partner_id" readonly="1"/>
+                <field name="facebook_live_id" readonly="1"/>
+                <field name="page_id" readonly="1"/>
+                <field name="state"
+                    decoration-success="state == 'sale'"
+                    decoration-info="state == 'draft'"
+                    decoration-primary="state == 'sent'"
+                    widget="badge"
+                    optional="hide"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_sgeede_facebook_live_filter" model="ir.ui.view">
+        <field name="name">sgeede.facebook.live.filter</field>
+        <field name="model">sgeede.facebook.live</field>
+        <field name="priority" eval="15"/>
+        <field name="arch" type="xml">
+            <search string="Search Facebook Live">
+                <field name="name" string="Live"
+                    filter_domain="['|', '|', ('name', 'ilike', self)]"/>
+                <field name="partner_id" operator="child_of"/>
+                <field name="facebook_live_id"/>
+                <field string="Date" name="live_date"/>
+                <filter string="My Live" name="partner_id" domain="[('partner_id', '=', uid)]"/>
+                <filter string="Today Activities" name="activities_today"
+                    domain="[('live_date', '=', context_today().strftime('%Y-%m-%d'))]"/>
+                <group expand="0" string="Group By">
+                    <filter string="Host" name="partner_id" domain="[]" context="{'group_by': 'partner_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_sgeede_facebook_live" model="ir.actions.act_window">
+        <field name="name">Facebook Live</field>
+        <field name="res_model">sgeede.facebook.live</field>
+        <field name="type">ir.actions.act_window</field>
+        <field name="view_id" ref="sgeede_facebook_live_tree"/>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_sgeede_facebook_live_filter"/>
+        <field name="context">{}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+            Create a new live!
+            </p>
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data> 
+        <record id="ir_cron_sgeede_facebook_get_token" model="ir.cron">
+            <field name="name">Generate Facebook Token</field>
+            <field name="model_id" ref="model_sgeede_facebook_page"/>
+            <field name="state">code</field>
+            <field name="code">model.cron_generate_token_data()</field>
+            <field name="active" eval="False"/>
+            <field name="user_id" ref="base.user_root"/>
+            <field name="interval_number">1</field>
+            <field name="interval_type">hours</field>
+            <field name="numbercall">-1</field>
+            <field name="doall" eval="False"/>
+        </record>
+
+        <record id="ir_cron_sgeede_facebook_start_live" model="ir.cron">
+            <field name="name">Facebook Start Live</field>
+            <field name="model_id" ref="model_sgeede_facebook_live"/>
+            <field name="state">code</field>
+            <field name="code">model.cron_run_create_comment_when_live()</field>
+            <field name="active" eval="False"/>
+            <field name="user_id" ref="base.user_root"/>
+            <field name="interval_number">1</field>
+            <field name="interval_type">minutes</field>
+            <field name="numbercall">-1</field>
+            <field name="doall" eval="False"/>
+        </record>
+
+        <record id="ir_cron_sgeede_facebook_get_post" model="ir.cron">
+            <field name="name">Facebook Get Post</field>
+            <field name="model_id" ref="model_sgeede_facebook_post"/>
+            <field name="state">code</field>
+            <field name="code">model.cron_run_create_post()</field>
+            <field name="active" eval="True"/>
+            <field name="user_id" ref="base.user_root"/>
+            <field name="interval_number">2</field>
+            <field name="interval_type">minutes</field>
+            <field name="numbercall">-1</field>
+            <field name="doall" eval="False"/>
+        </record>
+    </data>
+</odoo>

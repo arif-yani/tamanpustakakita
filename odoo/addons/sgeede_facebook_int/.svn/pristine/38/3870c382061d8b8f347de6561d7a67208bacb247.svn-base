@@ -1,0 +1,146 @@
+import json
+import requests
+from odoo import api, fields, models, tools, _, SUPERUSER_ID
+from odoo.exceptions import UserError, ValidationError
+from datetime import datetime, timedelta
+from dateutil.relativedelta import relativedelta
+import re
+
+class sgeede_facebook_get_post(models.TransientModel):
+    _name = "sgeede.facebook.get.post"
+    _description = "Facebook Get Post"
+
+    page_id = fields.Many2one('sgeede.facebook.page', 'Page ID')
+
+    def get_all_post(self):
+        api_url = "https://graph.facebook.com/v19.0/"
+        self.page_id.cron_generate_token_data()
+        added_fields = "message,created_time,status_type,story,attachments{url,type,subattachments,description,target}"
+        api_get_post = api_url+self.page_id.page_id+"/feed?fields="+added_fields+"&access_token="+self.page_id.page_token
+        headers = {
+                'Content-Type':'application/json'
+            }
+        response_api = requests.get(api_get_post, headers=headers)
+        post_json = response_api.json()
+        if 'data' not in post_json:
+            self.env['sgeede.facebook.api.log'].create({
+                'name': 'Get Post',
+                'page_id': self.page_id.id,
+                'running_date': datetime.now(),
+                'state': 'failed',
+                'message': post_json,
+            })
+            return False
+        self.env['sgeede.facebook.api.log'].create({
+            'name': 'Get Post',
+            'page_id': self.page_id.id,
+            'running_date': datetime.now(),
+            'state': 'success',
+            'message': post_json,
+        })
+        return post_json['data']
+    
+
+    def create_post(self):
+        datas = self.get_all_post()
+        if datas:
+            for data in datas:
+                timestamp_str = data['created_time']
+                formatted_timestamp = timestamp_str.replace("T", " ")
+                formatted_timestamp = formatted_timestamp.replace("+0000", "")
+                datetime_obj = datetime.strptime(formatted_timestamp, "%Y-%m-%d %H:%M:%S")
+                
+
+                underscore_index = data['id'].find("_")
+                str_id_post = ""
+                if underscore_index != -1:
+                    str_id_post = data['id'][underscore_index + 1:]
+
+                get_latest_post = self.env['sgeede.facebook.post'].search([('id_post','=', str_id_post)])
+                if not get_latest_post:
+                    post = self.env['sgeede.facebook.post'].create({
+                        'name': data['id'],
+                        'post_date': datetime_obj,
+                        'type_post':data['status_type'],
+                        'story':data['story'] if 'story' in data else '',
+                        'message': data['message'] if 'message' in data else "",
+                        'page_id': self.page_id.id,
+                        'id_post': str_id_post,
+                    })
+                    if 'attachments' in data:
+                        for attch in data['attachments']['data']:
+                            if attch['type'] == 'album':
+                                if 'subattachments' in attch:
+                                    for subattch in attch['subattachments']['data']:
+                                        product_obj = self._get_product_by_caption(subattch['description'])
+                                        self.env['sgeede.facebook.attachment'].create({
+                                            'attachment_link': subattch['url'],
+                                            'attachment_type': subattch['type'],
+                                            'post_id': post.id,
+                                            'name': subattch['description'],
+                                            'product_id': product_obj.id if product_obj else False,
+                                            'id_attachment': subattch['target']['id'],
+                                        })
+                            else:
+                                product_obj = self._get_product_by_caption(subattch['description'])
+                                self.env['sgeede.facebook.attachment'].create({
+                                    'attachment_link': attch['url'],
+                                    'attachment_type': attch['type'],
+                                    'post_id': post.id,
+                                    'name': attch['description'],
+                                    'product_id': product_obj.id if product_obj else False,
+                                    'id_attachment': attch['target']['id'],
+                                })
+                    self.env['sgeede.facebook.comment'].create_comment(post, self.page_id)
+                else:
+                    get_latest_post.update({
+                        'name': data['id'],
+                        'post_date': datetime_obj,
+                        'type_post':data['status_type'],
+                        'story':data['story'] if 'story' in data else '',
+                        'message': data['message'] if 'message' in data else "",
+                        'page_id': self.page_id.id,
+                        'id_post': str_id_post,
+                    })
+                    if 'attachments' in data:
+                        for attch in data['attachments']['data']:
+                            if attch['type'] == 'album':
+                                if 'subattachments' in attch:
+                                    for subattch in attch['subattachments']['data']:
+                                        product_obj = self._get_product_by_caption(subattch['description'])
+                                        self.env['sgeede.facebook.attachment'].search([('id_attachment','=',subattch['target']['id']),('post_id','=',get_latest_post.id)]).update({
+                                            'attachment_link': subattch['url'],
+                                            'attachment_type': subattch['type'],
+                                            'post_id': get_latest_post.id,
+                                            'name': subattch['description'],
+                                            'id_attachment': subattch['target']['id'],
+                                            'product_id': product_obj.id if product_obj else False,
+                                        })
+                            else:
+                                product_obj = self._get_product_by_caption(subattch['description'])
+                                self.env['sgeede.facebook.attachment'].search([('id_attachment','=',attch['target']['id']),('post_id','=',get_latest_post.id)]).update({
+                                    'attachment_link': attch['url'],
+                                    'attachment_type': attch['type'],
+                                    'post_id': get_latest_post.id,
+                                    'name': attch['description'],
+                                    'id_attachment': attch['target']['id'],
+                                    'product_id': product_obj.id if product_obj else False,
+                                })
+                    else:
+                        if get_latest_post.attachment_ids:
+                            get_latest_post.attachment_ids.unlink()
+                    self.env['sgeede.facebook.comment'].create_comment(get_latest_post, self.page_id)
+
+    def _get_product_by_caption(self, caption):
+        pattern1 = re.compile(r'(?<=Kode: )([\w-]+)', re.IGNORECASE)
+        pattern2 = re.compile(r'(?<=Kode:)([\w-]+)', re.IGNORECASE)
+        matches1 = re.search(pattern1, caption)
+        matches2 = re.search(pattern2, caption)
+        if matches1:
+            value = matches1.group(1)
+            return self.env['product.product'].search([('default_code','ilike',value)], limit=1)
+        elif matches2:
+            value = matches2.group(1)
+            return self.env['product.product'].search([('default_code','ilike',value)], limit=1)
+        else:
+            return False

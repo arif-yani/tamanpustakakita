@@ -1,0 +1,34 @@
+from odoo import api, fields, models, tools, _
+from odoo.exceptions import UserError, ValidationError
+from datetime import date, datetime, timedelta
+
+class myfuture_search_paket(models.TransientModel):
+    _name = "myfuture.search.paket"
+
+    paket_id = fields.Many2one('myfuture.paket', "Paket ID")
+    count_scanner =  fields.Integer("Count Scan")
+
+    @api.onchange("paket_id")
+    def onchange_paket_id(self):
+        if self.paket_id:
+            paket_obj = self.env['myfuture.paket'].search([('id','=',self.paket_id.id)])
+            if paket_obj:
+                if self.env["myfuture.sent.paket"].search([('paket_id','=',paket_obj.id)]):
+                    raise ValidationError("Paket sudah discan")
+                else:
+                    sent_to = False
+                    if self.paket_id.move_id.partner_id.kota_id.name.upper() == 'KOTA BATAM':
+                        sent_to = 'batam'
+                    else:
+                        sent_to = 'luar_batam'
+                    self.env["myfuture.sent.paket"].create({
+                        'name': self.paket_id.name,
+                        'paket_id': self.paket_id.id,
+                        'check_out_time': datetime.now(),
+                        'state': "check_in",
+                        'kecamatan_id': self.paket_id.move_id.partner_id.kecamatan_id.id,
+                        'sent_to': sent_to
+                    })
+                    self.paket_id = False
+                    self.count_scanner += 1
+            

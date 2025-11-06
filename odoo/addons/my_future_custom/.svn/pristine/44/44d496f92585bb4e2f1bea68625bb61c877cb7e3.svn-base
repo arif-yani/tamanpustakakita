@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="my_future_keep_order_tree" model="ir.ui.view">
+        <field name="name">my.future.keep.order.tree</field>
+        <field name="model">my.future.keep.order</field>
+        <field name="priority">1000</field>
+        <field name="arch" type="xml">
+            <tree class="o_sale_order"
+                  string="Keep Order" create="1" editable="bottom" multi_edit="1" default_order="product_id, size_id,keep_datetime">
+                <header>
+                </header>
+                <field name="partner_id"/>
+                <field name="mobile"/>
+                <field name="keep_datetime"/>
+                <field name="product_id" />
+                <field name="size_id"/>
+                <field name="price" />
+                <field name="quantity" sum="quantity"/>
+                <field name="get_product"/>
+                <field name="comment_id" optional="hide"/>
+                <field name="is_confirmed" optional="hide"/>
+                <field name="post_id" optional="hide"/>
+                <field name="state" widget="selection_badge"
+                    decoration-success="state == 'done'"
+                    decoration-info="state == 'keep'"
+                    decoration-primary="state == 'waiting_wa'"/>
+            </tree>
+        </field>
+    </record>
+
+
+    <record id="view_my_future_keep_order_filter" model="ir.ui.view">
+        <field name="name">my.future.keep.order.filter</field>
+        <field name="model">my.future.keep.order</field>
+        <field name="priority" eval="15"/>
+        <field name="arch" type="xml">
+            <search string="Search Keep Order">
+                <field name="partner_id" string="Customer"/>
+                <field name="product_id" string="Product"/>
+                <field name="size_id" string="Size"/>
+                <separator/>
+                <filter string="Dapat" name="dapat" domain="[('get_product', '=', 'dapat')]"/>
+                <filter string="Tidak Dapat" name="tidak_dapat" domain="[('get_product', '=', 'tidak')]"/>
+                <separator/>
+                <filter string="Keep" name="keep" domain="[('state', '=', 'keep')]"/>
+                <filter string="Totalan" name="totalan" domain="[('state', '=', 'totalan')]"/>
+                <filter string="Order Dengan Supplier" name="order_suplier" domain="[('state', '=', 'order_supplier')]"/>
+                <filter string="Waiting For Whatsapp" name="waiting_wa" domain="[('state', '=', 'waiting_wa')]"/>
+                <filter string="Done" name="done" domain="[('state', '=', 'done')]"/>
+                <separator/>
+                <group expand="0" string="Group By">
+                    <filter string="Customer" name="partner_id" domain="[]" context="{'group_by': 'partner_id'}"/>
+                    <filter string="Product" name="group_product_id" domain="[]" context="{'group_by': 'product_id'}"/>
+                    <filter string="Tanggal" name="keep_datetime" domain="[]" context="{'group_by': 'keep_datetime'}"/>
+                    <filter string="Hari" invisible="1" name="keep_datetime_day" domain="[]" context="{'group_by': 'keep_datetime:day'}"/>
+                    <filter string="Size" name="size_id" domain="[]" context="{'group_by': 'size_id'}"/>
+                    <filter string="Dapat/Tidak" name="get_product" domain="[]" context="{'group_by': 'get_product'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_update_keep_order" model="ir.actions.server">
+        <field name="name">Update Keep Order</field>
+        <field name="type">ir.actions.server</field>
+        <field name="model_id" ref="model_my_future_keep_order"/>
+        <field name="binding_model_id" ref="model_my_future_keep_order"/>
+        <field name="state">code</field>
+        <field name="code">action = model.action_update_keep_order()</field>
+    </record>
+    
+
+    <record id="action_my_future_keep_order" model="ir.actions.act_window">
+        <field name="name">Keep Order</field>
+        <field name="res_model">my.future.keep.order</field>
+        <field name="type">ir.actions.act_window</field>
+        <field name="view_id" ref="my_future_keep_order_tree"/>
+        <field name="view_mode">tree</field>
+        <field name="context">{'search_default_group_product_id': 1,'search_default_keep': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+            Create a new Order!
+            </p>
+        </field>
+    </record>
+</odoo>

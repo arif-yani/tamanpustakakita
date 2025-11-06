@@ -1,0 +1,126 @@
+from odoo import api, fields, models
+import time
+from datetime import datetime, timedelta
+import requests
+import json
+from odoo.exceptions import UserError, ValidationError
+from odoo.addons.sgeede_facebook_int.models.sgeede_facebook_comment import sgeede_facebook_comment
+import re
+
+class sgeede_facebook_comment(models.Model):
+    _inherit = "sgeede.facebook.comment"
+
+
+    is_keep_order = fields.Boolean('Comment Keep Order', default=False)
+
+
+    def _get_keep_regex(self, caption, comment_id):
+        pattern1 = r'\b(?:Keep|keep)\s+(\S+)\s+(\d+)\s+(\S+)\b'
+        pattern2= r'(\S+)\s+(\S+)\s+(?:Keep|keep)\s+(\d+)'
+        pattern3= r'(?:Keep|keep)\s+(\d+)\s+(\S+)\s+(\S+)'
+        pattern4= r'(?:Keep|keep)\s+(\S+)\s+(\S+)'
+        matches1 = re.search(pattern1, caption)
+        matches2 = re.search(pattern2, caption)
+        matches3 = re.search(pattern3, caption)
+        matches4 = re.search(pattern4, caption)
+        if matches1:
+            attachment_obj = self.env['sgeede.facebook.attachment'].search([('id_attachment','=',comment_id.id_attachment),('post_id','=',comment_id.post_id.id)], limit=1)
+            if attachment_obj:
+                comment_id.product_id = attachment_obj.product_id.id
+                comment_id.is_keep_order = True
+                self._create_keep_order(comment_id, matches1.group(2), matches1.group(3))
+                return True
+        if matches2:
+            attachment_obj = self.env['sgeede.facebook.attachment'].search([('id_attachment','=',comment_id.id_attachment),('post_id','=',comment_id.post_id.id)], limit=1)
+            if attachment_obj:
+                comment_id.product_id = attachment_obj.product_id.id
+                comment_id.is_keep_order = True
+                self._create_keep_order(comment_id, matches2.group(3), matches2.group(2))
+                return True
+        if matches3:
+            attachment_obj = self.env['sgeede.facebook.attachment'].search([('id_attachment','=',comment_id.id_attachment),('post_id','=',comment_id.post_id.id)], limit=1)
+            if attachment_obj:
+                comment_id.product_id = attachment_obj.product_id.id
+                comment_id.is_keep_order = True
+                self._create_keep_order(comment_id, matches3.group(1), matches3.group(3))
+                return True
+        if matches4:
+            attachment_obj = self.env['sgeede.facebook.attachment'].search([('id_attachment','=',comment_id.id_attachment),('post_id','=',comment_id.post_id.id)], limit=1)
+            if attachment_obj:
+                comment_id.product_id = attachment_obj.product_id.id
+                comment_id.is_keep_order = True
+                self._create_keep_order(comment_id, 1.0, matches4.group(2))
+                return True
+        
+    def _create_keep_order(self, comment_id, pce, size):
+        comment_obj = self.env['my.future.keep.order'].search([('comment_id','=',comment_id.id)])
+        if comment_id.is_keep_order and not comment_obj:
+            size_obj = self.env['my.future.product.size'].search([('name','ilike',size)], limit=1)
+            self.env['my.future.keep.order'].create({
+                'partner_id': comment_id.partner_id.id,
+                'keep_datetime': comment_id.created_comment_time,
+                'product_id': comment_id.product_id.id if comment_id.product_id else False,
+                'comment_id': comment_id.id,
+                'quantity': pce,
+                'size_id': size_obj.id if size_obj else False,
+                })
+        elif comment_obj:
+            size_obj = self.env['my.future.product.size'].search([('name','ilike',size)], limit=1)
+            self.env['my.future.keep.order'].update({
+                'partner_id': comment_id.partner_id.id,
+                'keep_datetime': comment_id.created_comment_time,
+                'product_id': comment_id.product_id.id if comment_id.product_id else False,
+                'comment_id': comment_id.id,
+                'quantity': pce,
+                'size_id': size_obj.id if size_obj else False,
+                })
+
+    def create_comment(self, post_id, page_id):
+        comments = self.get_all_comments(post_id, page_id)
+        if comments:
+            for comment in comments:
+                get_same_comment = self.search([('comment_id','=', comment['id']),('post_id','=',post_id.id)])
+                sender_comment = False
+                sender_comment_id = False
+                timestamp_str = comment['created_time']
+                formatted_timestamp = timestamp_str.replace("T", " ")
+                formatted_timestamp = formatted_timestamp.replace("+0000", "")
+                datetime_obj = datetime.strptime(formatted_timestamp, "%Y-%m-%d %H:%M:%S")
+                comment_user = None
+                if 'from' in comment:
+                        sender_comment = comment['from']['name']
+                        sender_comment_id = comment['from']['id']
+                        comment_user = self.env['res.partner'].search([('facebook_account_id','=',sender_comment_id)])
+                        if not comment_user:
+                            comment_user = self.env['res.partner'].create({
+                                'name': sender_comment,
+                                'facebook_account_id': sender_comment_id,
+                                'customer_rank': 1,
+                                'supplier_rank': 0,
+                            })
+                if not get_same_comment:
+                    comment_obj = self.create({
+                        'partner_id': comment_user.id if comment_user != None else False,
+                        'name': comment['message'],
+                        'comment_id': comment['id'],
+                        'sender': sender_comment,
+                        'sender_comment_id': sender_comment_id,
+                        'created_comment_time': datetime_obj,
+                        'post_id': post_id.id,
+                        'id_attachment': comment['id_attachment'] if 'id_attachment' in comment else '',
+                    })
+                    self._get_keep_regex(comment_obj.name, comment_obj)
+                else:
+                    get_same_comment.update({
+                        'partner_id': comment_user.id if comment_user != None else False,
+                        'name': comment['message'],
+                        'comment_id': comment['id'],
+                        'sender': sender_comment,
+                        'sender_comment_id': sender_comment_id,
+                        'created_comment_time': datetime_obj,
+                        'post_id': post_id.id,
+                        'id_attachment': comment['id_attachment'] if 'id_attachment' in comment else '',
+
+                    })
+                    self._get_keep_regex(get_same_comment.name, get_same_comment)
+    sgeede_facebook_comment.create_comment = create_comment

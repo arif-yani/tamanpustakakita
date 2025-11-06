@@ -1,0 +1,35 @@
+{
+    'name': 'SGEEDE Facebook Integration',
+    'version': '1.0',
+    'author': 'SGEEDE',
+    'summary': 'SGEEDE Facebook Integration',
+    'description': """
+        Integrate SGEEDE system with Facebook by using partner API
+    """,
+    'website': 'https://www.sgeede.com',
+    'depends': ['delivery', 'product', 'base', 'sale', 'stock'],
+    'category': 'Extra Tools',
+    'demo': [],
+    'data': [
+    
+        # 'security/sgeede_facebook_security.xml',
+        'security/ir.model.access.csv',
+
+
+        'views/sgeede_facebook_live_views.xml',
+        'views/sgeede_facebook_post_views.xml',
+        'views/sgeede_facebook_page_views.xml',
+        'views/sgeede_facebook_comment_views.xml',
+        'views/res_partner_views.xml',
+        'views/sgeede_facebook_api_log_views.xml',
+        'wizard/sgeede_facebook_get_post_views.xml',
+        'wizard/sgeede_facebook_reply_comment_views.xml',
+        'views/sgeede_facebook_menuitem_views.xml',
+
+        'data/sgeede_facebook_cron.xml',
+
+        
+    ],
+    'installable': True,
+    'qweb': [],
+}

@@ -1,0 +1,59 @@
+from odoo import api, fields, models
+import time
+from datetime import datetime, timedelta
+import requests
+import json
+from odoo.exceptions import UserError, ValidationError
+
+class my_future_facebook_keep_order(models.Model):
+    _name = "my.future.keep.order"
+    _description = "Keep Order"
+
+    partner_id = fields.Many2one('res.partner', 'Sender')
+    keep_datetime = fields.Datetime('Keep Datetime')
+    product_id = fields.Many2one('product.product', 'Product')
+    size_id = fields.Many2one("my.future.product.size", string="Size", compute="_compute_default_size", store=True,readonly=False)
+    price = fields.Float('Price', related='product_id.lst_price', readonly=False)
+    quantity = fields.Float('PCS')
+    get_product = fields.Selection([('Dapat','Dapat'), ('Tidak','Tidak')], default='Tidak', string="Dapat/Tidak")
+    state = fields.Selection([('keep','Keep'),('done','Done'),('waiting_wa','Waiting For WA'),], string="Status", default="keep")
+    comment_id = fields.Many2one('sgeede.facebook.comment', string="Comment ID")
+
+
+    @api.depends('product_id')
+    def _compute_default_size(self):
+        for line in self:
+            if line.product_id:
+                line.size_id = line.product_id.size_id.id
+            else:
+                line.size_id = False
+
+    def summary_product_keep(self):
+        result = []
+        keep_order_group_product = {
+            product: count
+            for product, count in self.env['my.future.keep.order']._read_group(
+                domain=[('state', '=', 'keep'), ('get_product', '=', 'dapat')],
+                groupby=['product_id'],
+                aggregates=['__count'],
+            )
+        }
+        for product in keep_order_group_product.keys():
+            keep_order_group_size = {
+                size.name: count
+                for size, count in self.env['my.future.keep.order']._read_group(
+                    domain=[('product_id', '=', product.id), ('state', '=', 'keep'), ('get_product', '=', 'dapat')],
+                    groupby=['size_id'],
+                    aggregates=['__count'],
+                )
+            }
+            for size in keep_order_group_size.keys():
+                vals = {}
+                vals['product'] = product
+                vals['size'] = size
+                vals['pce'] = keep_order_group_size[size]
+                result.append(vals)
+        return result
+    
+    def action_summary_product_keep(self):
+        return self.env.ref('my_future_custom.action_summary_product_keep_xls').report_action(self, config=False)

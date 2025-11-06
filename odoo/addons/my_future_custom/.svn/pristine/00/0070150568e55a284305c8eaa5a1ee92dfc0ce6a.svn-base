@@ -1,0 +1,187 @@
+import odoo.addons.decimal_precision as dp
+from odoo import api, fields, models, tools, _
+from odoo.exceptions import UserError, ValidationError
+import time
+from datetime import datetime, timedelta
+from urllib.parse import quote
+
+class ResPartner(models.Model):
+    _inherit = "res.partner"
+
+    is_blacklist_customer = fields.Boolean('Blacklist Customer', default=False, compute="_compute_blacklist_customer")
+    is_announced = fields.Boolean('Have Send Message', default=False, compute="_compute_is_annouced", readonly=False, store=True)
+    invoice_link_download =  fields.Char("Invoice Link", compute="_compute_invoice_link")
+    payment_link = fields.Char("Payment Link", compute="_compute_payment_link")
+    payment_link_overdue = fields.Char("Payment Link Overdue", compute="_compute_payment_link_overdue")
+    myfuture_address = fields.Text("Address")
+    provinsi_id = fields.Many2one("myfuture.provinsi", "Provinsi", related="kota_id.provinsi_id", readonly=False, store=True)
+    kota_id = fields.Many2one("myfuture.kota", "Kabupaten/Kota", related="kecamatan_id.kota_id", readonly=False, store=True)
+    kecamatan_id = fields.Many2one("myfuture.kecamatan", "Kecamatan")
+
+    is_dropship = fields.Boolean(string="Is a Dropship", default=False)
+    is_rajaongkir_address= fields.Boolean('Is Raja Ongkir Address')
+
+    rajaongkir_district = fields.Char('ID District Raja Ongkir') 
+    rajaongkir_city = fields.Char('ID City Raja Ongkir') 
+    rajaongkir_province = fields.Char('ID Province Raja Ongkir')
+    
+    rajaongkir_postal_code = fields.Char('Postal Code')
+    rajaongkir_province_name = fields.Char('Province')
+    
+    rajaongkir_city_name = fields.Char('City')
+    rajaongkir_district_name = fields.Char('District')
+    rajaongkir_address = fields.Char('Address (Raja Ongkir)', compute='_compute_rajaongkir_address') 
+
+    @api.depends("total_overdue")
+    def _compute_blacklist_customer(self):
+        for line in self:
+            if line.total_overdue > 0:
+                line.is_blacklist_customer = True
+            else:
+                line.is_blacklist_customer = False
+
+    @api.depends("invoice_ids")
+    def _compute_invoice_link(self):
+        for line in self:
+            inv_arr_ids = []
+            all_child = line.with_context(active_test=False).search([('id', 'child_of', line.ids)])
+            domain = [('move_type', 'in', ('out_invoice', 'out_refund')),('partner_id', 'in', all_child.ids),
+                ('state','=' ,'posted'),('payment_state', 'in',  ['not_paid', 'partial'])]
+            invoice_obj = self.env['account.move'].search(domain)
+            for inv_line in invoice_obj:
+                inv_arr_ids.append(inv_line.id)
+            join_ids = quote(','.join(map(str, inv_arr_ids)))
+            action_id = self.env['ir.actions.actions'].search([('name','=','Invoices'),('type','=','ir.actions.report')],limit=1)
+            url = line.get_base_url()
+            if len(inv_arr_ids) > 0:
+                line.invoice_link_download =  f'{url}/web#action={action_id.id}&active_ids={join_ids}'
+            else:
+                line.invoice_link_download =  False
+
+    @api.depends("total_overdue")
+    def _compute_payment_link_overdue(self):
+        for line in self:
+            if line.total_overdue > 0:
+                create_link_payment = line.env['payment.link.wizard'].create({
+                   'res_id': line.id,
+                   'res_model': 'res.partner',
+                   'amount': line.total_overdue 
+                })
+                line.payment_link_overdue = create_link_payment.link
+            else:
+                line.payment_link_overdue = False
+
+    @api.depends("total_due")
+    def _compute_payment_link(self):
+        for line in self:
+            if line.total_overdue > 0:
+                create_link_payment = line.env['payment.link.wizard'].create({
+                   'res_id': line.id,
+                   'res_model': 'res.partner',
+                   'amount': line.total_due
+                })
+                line.payment_link = create_link_payment.link
+            else:
+                line.payment_link = False
+
+    @api.depends('is_blacklist_customer')
+    def _compute_is_annouced(self):
+        for line in self:
+            if line.is_blacklist_customer:
+                line.is_announced = False
+            else:
+                line.is_announced = False
+
+    def _get_default_payment_link_values(self):
+        self.ensure_one()
+        return {
+            'amount': self.total_due,
+            'currency_id': self.currency_id.id,
+            'partner_id': self.id,
+            'amount_max': self.total_due,
+        }
+
+
+    def action_create_payment_link(self):
+        return {
+            'name': _('Create Payment Link'),
+            'res_model': 'payment.link.wizard',
+            'view_mode': 'form',
+            'views': [[False, 'form']],
+            'context': {
+                'active_model': 'res.partner',
+                'active_ids': self.ids,
+                'default_partner_id': self.id,
+            },
+            'target': 'new',
+            'type': 'ir.actions.act_window',
+        }
+
+
+class myfuture_provinsi(models.Model):
+    _name = "myfuture.provinsi"
+    _description = "Provinsi Indonesia"
+
+    name = fields.Char("Nama Provinsi")
+    code = fields.Integer("Code Provinsi")
+
+
+class myfuture_kota(models.Model):
+    _name = "myfuture.kota"
+    _description = "Kota Indonesia"
+
+    name = fields.Char("Nama Kabupaten/Kota")
+    code = fields.Integer("Code Kabupaten/Kota")
+    provinsi_id = fields.Many2one('myfuture.provinsi', "Provinsi")
+
+    def get_provinsi(self):
+        for kota in self.env['myfuture.kota'].search([]):
+            if kota.code:
+                code = str(kota.code)[:2]
+                provinsi_obj = self.env['myfuture.provinsi'].search([('code','=',int(code))],limit=1)
+                kota.provinsi_id = provinsi_obj
+            else:
+                kota.provinsi_id = False
+
+class myfuture_kecamatan(models.Model):
+    _name = "myfuture.kecamatan"
+    _description = "kecamatan Indonesia"
+
+    name = fields.Char("Nama Kecamatan")
+    code = fields.Integer("code Kecamatan")
+    kota_id = fields.Many2one('myfuture.kota', "Kota")
+    provinsi_id = fields.Many2one('myfuture.provinsi', "Provinsi", related="kota_id.provinsi_id")
+
+    @api.depends('name', 'kota_id', 'provinsi_id')
+    def _compute_display_name(self):
+        for line in self:
+            line.display_name = '%s, %s, %s'%(line.provinsi_id.name or False, line.kota_id.name or False, line.name)
+   
+    def get_kota(self):
+        for kecamatan in self.env['myfuture.kecamatan'].search([]):
+            if kecamatan.code:
+                code = str(kecamatan.code)[:4]
+                kota_obj = self.env['myfuture.kota'].search([('code','=',int(code))],limit=1)
+                kecamatan.kota_id = kota_obj
+            else:
+                kecamatan.kota_id = False
+
+    @api.model
+    def name_search(self, name, args=None, operator='ilike', limit=100):
+        res = super(myfuture_kecamatan, self).name_search(name, args, operator, limit)
+        args = args or []
+        recs = self.browse()
+        if not recs:
+            recs = self.search(['|',('provinsi_id.name', operator, name),('kota_id.name', operator, name)] + args, limit=limit)
+        res += recs.name_get()
+        return res
+
+   
+
+
+class Company(models.Model):
+    _inherit = "res.company"
+
+    def Config(self):
+        company = self.env["res.company"].sudo().search([], limit=1)
+        return company

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="whatsapp_composer_view_form_inherit_my_future" model="ir.ui.view">
+        <field name="name">whatsapp.composer.view.form.inherit.myfuture</field>
+        <field name="model">whatsapp.composer</field>
+        <field name="inherit_id" ref="whatsapp.whatsapp_composer_view_form"/>
+        <field name="arch" type="xml">
+             <xpath expr="//button[@name='action_send_whatsapp_template']" position="after">
+                    <button string="Send Message" type="object" class="oe_highlight" name="action_send_message_my_future"/>
+            </xpath>
+             <!-- <xpath expr="//button[@name='action_send_whatsapp_template']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath> -->
+        </field>
+    </record>
+</odoo>

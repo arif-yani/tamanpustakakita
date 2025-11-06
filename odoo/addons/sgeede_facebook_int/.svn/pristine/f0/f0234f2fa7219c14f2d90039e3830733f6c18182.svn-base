@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="sgeede_facebook_comment_tree" model="ir.ui.view">
+        <field name="name">sgeede.facebook.comment.tree</field>
+        <field name="model">sgeede.facebook.comment</field>
+        <field name="priority">1000</field>
+        <field name="arch" type="xml">
+            <tree class="o_sale_order"
+                  string="Facebook Live Comment" create="0">
+                <field name="partner_id" readonly="1" force_save="1"/>
+                <field name="name" string="Comment" readonly="1" decoration-bf="1" force_save="1"/>
+                <field name="product_id" optional="show" />
+                <field name="tag_id" optional="show" widget="badge"/>
+                <field name="created_comment_time" optional="show" />
+                <field name="live_id" readonly="1" force_save="1"/>
+                <field name="post_id" readonly="1" force_save="1"/>
+                <field name="sender_comment_id" readonly="1" force_save="1"/>
+                <field name="comment_id" string="Comment ID" optional="show" />
+                <field name="is_valid" readonly="1" optional="hide" force_save="1"/>
+                <field name="is_replied" readonly="1" optional="hide" force_save="1"/>
+                <field name="id_attachment" optional="hide"/>
+                <button string="Reply Comment" name="action_reply_comment" type="object"/> 
+            </tree>
+        </field>
+    </record>
+
+    
+
+    <record id="action_sgeede_facebook_comment" model="ir.actions.act_window">
+        <field name="name">Comment</field>
+        <field name="res_model">sgeede.facebook.comment</field>
+        <field name="type">ir.actions.act_window</field>
+        <field name="view_id" ref="sgeede_facebook_comment_tree"/>
+        <field name="view_mode">tree</field>
+        <field name="context">{}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+            Create a new Comment!
+            </p>
+        </field>
+    </record>
+</odoo>

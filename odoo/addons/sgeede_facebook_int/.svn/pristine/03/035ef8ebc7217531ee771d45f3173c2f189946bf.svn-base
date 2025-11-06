@@ -1,0 +1,74 @@
+from odoo import api, fields, models
+import time
+from datetime import datetime, timedelta
+import requests
+import json
+from odoo.exceptions import UserError, ValidationError
+
+class sgeede_facebook_post(models.Model):
+    _name = "sgeede.facebook.post"
+    _description = "Facebook Post"
+
+    name = fields.Char('Post ID', required=True)
+    line_ids = fields.One2many('sgeede.facebook.product', 'post_id',string="Active Product")
+    comment_ids = fields.One2many('sgeede.facebook.comment', 'post_id', string="Comment")
+    post_date = fields.Datetime('Post Date')
+    type_post = fields.Char('Post Type')
+    story = fields.Text('Story')
+    message = fields.Char('Post Name')
+    page_id = fields.Many2one('sgeede.facebook.page', 'Page', required=True)
+    sum_comment = fields.Integer('Sum Comment', compute='_compute_sum_comment')
+    id_post = fields.Char('ID Post')
+    attachment_ids = fields.One2many('sgeede.facebook.attachment', 'post_id')
+
+    @api.depends('comment_ids')
+    def _compute_sum_comment(self):
+        for line in self:
+            if len(line.comment_ids) > 0:
+                line.sum_comment = len(line.comment_ids)
+            else:
+                line.sum_comment = 0
+
+    def cron_run_create_post(self):
+        wizard_obj = self.env['sgeede.facebook.get.post']
+        page_obj = self.env['sgeede.facebook.page']
+        page_ids = page_obj.search([])
+
+        for page in page_ids:
+            wizard_id = wizard_obj.create({
+                'page_id': page.id,
+            })
+            wizard_id.create_post()
+
+        return True
+
+    def reply_comment(self):
+        print("sdksdksjdks")
+
+    def action_read_all_comments(self):
+        return {
+            'type': 'ir.actions.act_window',
+            'name': ('Facebook Comment'),
+            'res_model': 'sgeede.facebook.comment',
+            'view_type': 'list',
+            'view_mode': 'list',
+            'domain': [('post_id','=',self.id)],
+            'context':{},
+        }
+    
+class sgeede_facebook_attachment(models.Model):
+    _name = "sgeede.facebook.attachment"
+    _description = "Facebook Attachment"
+
+    post_id = fields.Many2one('sgeede.facebook.post', 'Post ID')
+    attachment_link = fields.Char('Link')
+    attachment_type = fields.Char('Type')
+    product_id = fields.Many2one('product.product', 'Product')
+    name = fields.Char('Description')
+    id_attachment = fields.Char('Attachment ID')
+
+
+
+    
+
+

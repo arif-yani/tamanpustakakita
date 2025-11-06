@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<odoo>
+	<record id="myfuture_update_keep_form" model="ir.ui.view">
+            <field name="name">myfuture.update.keep.order.form</field>
+            <field name="model">update.keep.order</field>
+            <field name="arch" type="xml">
+                <form string="Update Customer Pricelist">
+                    <group class="oe_title">
+                        <field name="get_product"/>
+                        <field name="state"/>
+                    </group>
+                    <footer>
+                        <button name="action_update_keep" string="Save" type="object" class="btn-primary"/>
+                        <button string="Cancel" class="btn btn-sm btn-default" special="cancel"/>
+                    </footer>
+                </form>
+            </field>
+        </record>
+ 
+</odoo>

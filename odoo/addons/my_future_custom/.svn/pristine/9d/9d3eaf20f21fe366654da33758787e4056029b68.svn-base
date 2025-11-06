@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <template id="report_label_myfuture">
+        <t t-call="web.basic_layout">
+            <t t-foreach="docs.paket_line_ids" t-as="doc">
+            <div class="page" style="border:1px solid black;margin-top:30px;">
+                    <!-- <div class="header"> -->
+                        <div class="row">
+                           <div class="row">
+                            <h3 style="text-align: center; font-family: 'Rational';"><b>MY FUTURE</b></h3>
+                        </div>
+                        </div>
+                        <br/>
+                        
+                   <!-- </div> -->
+                   <t t-set="total_discount" t-value="0"/>
+                   <t t-set="total" t-value="0.00"/>
+                    <t t-set="total_baju" t-value="0"/>
+                   <div class="page" style="">
+                        <table width="100%" style="border: 0px solid white;">
+                            <tr>
+                                <td width="50%">
+                                    <table width="100%" style="border: 0px solid white;">
+                                        <tr>
+                                            <td width="35%" style="font-family: 'SwitzeraADF-Regular';font-size:20px;padding-left:5px;">Nama</td>
+                                            <td width="5%" style="font-family: 'SwitzeraADF-Regular';font-size:20px;">:</td>
+                                            <td width="60%" style="font-family: 'SwitzeraADF-Regular';font-size:20px;">
+                                                <span t-field="doc.move_id.partner_id.name" style=""/>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td width="35%" style="font-family: 'SwitzeraADF-Regular';font-size:20px;padding-left:5px;">Alamat</td>
+                                            <td width="5%" style="font-family: 'SwitzeraADF-Regular';font-size:20px;">:</td>
+                                            <td width="60%" style="font-family: 'SwitzeraADF-Regular';font-size:20px;">
+                                                <t t-if="doc.move_id.partner_id.street">
+                                                    <span t-field="doc.move_id.partner_id.street"/>
+                                                </t>
+                                                <t t-if="doc.move_id.partner_id.kecamatan_id">
+                                                    ,<span t-field="doc.move_id.partner_id.kecamatan_id.name"/>
+                                                </t>
+                                                <t t-if="doc.move_id.partner_id.kota_id.name">
+                                                    ,<span t-field="doc.move_id.partner_id.kota_id.name"/>
+                                                </t>
+                                                <t t-if="doc.move_id.partner_id.provinsi_id">
+                                                    <br/><span t-field="doc.move_id.partner_id.provinsi_id.name"/>
+                                                </t>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td width="35%" style="font-family: 'SwitzeraADF-Regular';font-size:20px;padding-left:5px;">No Hp Cust</td>
+                                            <td width="5%" style="font-family: 'SwitzeraADF-Regular';font-size:20px;">:</td>
+                                            <td width="60%" style="font-family: 'SwitzeraADF-Regular';font-size:20px;">
+                                                <span t-field="doc.move_id.partner_id.mobile" style=""/>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td colspan="3"><br/><br/></td>
+                                        </tr>
+                                        <tr>
+                                            <td colspan="3" style="text-align:center;">
+                                                <img t-if="doc.name"
+                                                    style="width:400px;height:70px;"
+                                                    t-att-src="'report/barcode/EAN13/%s'%(doc.name)"/>
+                                                <!-- <img t-if="doc.name"
+                                                    style="width:400px;height:70px;"
+                                                    t-att-src="'report/barcode/?barcode_type=%s&amp;value=%s&amp;
+                                                    width=%s&amp;height=%s'%('EAN13',doc.name,265,80)"/> -->
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </td>
+                                <td width="5%"/>
+                            </tr>
+                        </table>
+                        
+                     </div>
+                     <br/>
+                    
+
+            </div>
+            <div class="footer" style="margin-bottom:50px;"/>
+            </t>
+
+                
+            <!-- </div> -->
+        </t>
+    </template>
+
+
+
+    <template id="myfuture_label">
+        <t t-call="web.html_container">
+            <t t-call="my_future_custom.report_label_myfuture"/>
+        </t>
+    </template>
+
+    </data>
+</odoo>

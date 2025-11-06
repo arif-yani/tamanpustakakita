@@ -1,0 +1,249 @@
+from odoo import api, fields, models, tools, _
+from odoo.exceptions import UserError, ValidationError
+from datetime import date, timedelta
+
+class AccountMove(models.Model):
+    _inherit = "account.move"
+
+    titipan = fields.Char("Titipan", compute="_compute_titipan")
+    harga_ongkir = fields.Monetary("Ongkir Per KG", compute="_compute_ongkir")
+    hutang = fields.Monetary("Sisa Hutang", compute="_compute_sisa_hutang")
+    sisa_dp = fields.Monetary("Sisa DP", compute="_compute_sisa_dp")
+    wizard_create_id = fields.Integer('Wizard Create ID')
+    paket_line_ids = fields.One2many("myfuture.paket","move_id", string="Paket Line")
+    total_weight = fields.Float("Berat Total", compute="_compute_paket_line_ids")
+    total_ongkir = fields.Monetary("Total Ongkir", compute="_compute_total_ongkir")
+    count_print_invoice = fields.Integer("Count Print Invoice", default=1)
+    count_print_label = fields.Integer("Count Print Label", default=1)
+    printed_invoice = fields.Integer("Printed Invoice", default=0, copy=False)
+    printed_label = fields.Integer("Printed Label", default=0, copy=False) 
+    confirmed_paket = fields.Integer("Total Paket", compute="compute_confirmed_paket")
+    invoice_link_download =  fields.Char("Invoice Link", compute="_compute_invoice_link")
+    payment_link = fields.Char("Payment Link", compute="_compute_payment_link")
+    formatted_grand_total_invoice = fields.Char("Grand Total Formatted", compute="_compute_formatted_total")
+    grand_total_invoice = fields.Float("Grand Total", compute="_compute_formatted_total")
+
+
+    @api.depends('amount_total','hutang','sisa_dp')
+    def _compute_formatted_total(self):
+        for line in self:
+            line.grand_total_invoice = line.amount_total+line.hutang-line.sisa_dp
+            line.formatted_grand_total_invoice =  "Rp {:,.2f}".format(line.amount_total+line.hutang-line.sisa_dp)
+
+
+
+    @api.depends("grand_total_invoice")
+    def _compute_payment_link(self):
+        for line in self:
+            if line.grand_total_invoice > 0:
+                create_link_payment = line.env['payment.link.wizard'].create({
+                   'res_id': line.id,
+                   'res_model': 'account.move',
+                   'amount': line.grand_total_invoice 
+                })
+                line.payment_link = create_link_payment.link
+            else:
+                line.payment_link = False
+
+    def _compute_invoice_link(self):
+        for line in self:
+            url = line.get_base_url()
+            line.invoice_link_download =  f'{url}/report/pdf/my_future_custom.report_invoice_myfuture/{line.id}'
+
+    @api.depends('paket_line_ids')
+    def compute_confirmed_paket(self):
+        for move in self:
+            move.confirmed_paket = len([paket for paket in move.paket_line_ids if paket.ongkir_paket_state == 'lunas'])
+    
+
+    @api.depends("invoice_line_ids","partner_id")
+    def _compute_paket_line_ids(self):
+        for move in self:
+            total_weight = sum(move.total_weight for move in move.invoice_line_ids) or 0
+            move.total_weight = total_weight or 0
+
+    @api.depends("partner_id", "total_weight")
+    def _compute_total_ongkir(self):
+        for line in self:
+            if line.partner_id:
+                line.total_ongkir = line.get_harga_ongkir(line.partner_id) * line.confirmed_paket
+            else:
+                line.total_ongkir = 0
+
+    @api.depends("paket_line_ids")
+    def _compute_titipan(self):
+        for line in self:
+            line.titipan = False
+            count = 0
+            for paket in line.paket_line_ids:
+                if paket.is_titipan:
+                    count += 1
+                    line.titipan = "%s %s"%(count, paket.remark if paket.remark else "")
+                else:
+                   line.titipan = line.titipan 
+
+    @api.depends("partner_id")
+    def _compute_ongkir(self):
+        for line in self:
+            line.harga_ongkir = line.get_harga_ongkir(line.partner_id)
+
+    def get_harga_ongkir(self, partner_id):
+        ongkir_obj = self.env['myfuture.ongkir'].search([('kecamatan_id','=',partner_id.kecamatan_id.id)],limit=1)
+        if partner_id.kota_id and partner_id.kota_id.name.upper() == "KOTA BATAM":
+            return 10000
+        elif partner_id.kecamatan_id and ongkir_obj:
+            return ongkir_obj.price
+        else:
+            return False
+
+
+    @api.depends('needed_terms')
+    def _compute_invoice_date_due(self):
+        today = fields.Date.context_today(self)
+        for move in self:
+            move.invoice_date_due = move.needed_terms and max(
+                (k['date_maturity'] for k in move.needed_terms.keys() if k),
+                default=False,
+            ) or move.invoice_date_due or today + timedelta(days=2)
+
+    @api.depends("partner_id")
+    def _compute_sisa_hutang(self):
+        for line in self:
+            hutang = 0
+            if line.partner_id.unreconciled_aml_ids:
+                for unreconciled in line.partner_id.unreconciled_aml_ids:
+                    if unreconciled.amount_residual_currency > 0 and unreconciled.move_id.id != line.id:
+                        hutang += unreconciled.amount_residual_currency
+                line.hutang =  hutang
+            else:
+                line.hutang = 0
+
+    @api.depends("partner_id")
+    def _compute_sisa_dp(self):
+        for line in self:
+            sisa_dp = 0
+            if line.partner_id.unreconciled_aml_ids:
+                for unreconciled in line.partner_id.unreconciled_aml_ids:
+                    if unreconciled.amount_residual_currency < 0:
+                        sisa_dp += abs(unreconciled.amount_residual_currency)
+                line.sisa_dp =  sisa_dp
+            else:
+                line.sisa_dp = 0
+
+    def action_send_wa_payment_link(self):
+        for line in self:
+            if line.state == 'posted' and line.payment_state in ('not_paid', 'partial'):
+                template_id =  line.env['whatsapp.template'].search([('template_name','=','tagihan_invoice')], limit=1)
+                send_message_obj = line.env['whatsapp.composer'].create({
+                            'wa_template_id': template_id.id,
+                            'phone':line.partner_id.mobile,
+                            'res_ids': line.ids,
+                            'res_model': 'account.move',
+                        })
+                send_message_obj.action_send_message_my_future()
+
+    def action_post(self):
+        res = super(AccountMove, self).action_post()
+        self.action_cut_dp()
+        return res
+
+    def action_cut_dp(self):
+        for dp in self.partner_id.unreconciled_aml_ids:
+            if dp.amount_residual_currency < 0:
+                self.js_assign_outstanding_line(dp.id)
+
+    def action_print_myfuture_label(self):
+        if self.printed_label >= self.count_print_label and not self.env.user.has_group("my_future_custom.group_admin"):
+            raise ValidationError("Label tidak bisa diprint, harap hubungi administrator.")
+        self.printed_label += 1
+        base_url = self.env['ir.config_parameter'].sudo().get_param('web.base.url')
+        body = _('Has been printed label %s.'%self.printed_label)
+        self.message_post(body=body)
+        return {
+            'name': 'Print Label',
+            'type': 'ir.actions.act_url',
+            'url': '%s/report/pdf/my_future_custom.myfuture_label/%s' %(base_url, self.id),
+        }
+    
+    def action_print_myfuture_invoice(self):
+        if self.printed_invoice >= self.count_print_invoice and not self.env.user.has_group("my_future_custom.group_admin"):
+            raise ValidationError("Invoice tidak bisa diprint, harap hubungi administrator.")
+        self.printed_invoice += 1
+        base_url = self.env['ir.config_parameter'].sudo().get_param('web.base.url')
+        body = _('Has been printed invoice.')
+        self.message_post(body=body)
+        return {
+            'name': 'Print Invoice',
+            'type': 'ir.actions.act_url',
+            'url': '%s/report/pdf/my_future_custom.report_invoice_myfuture/%s' %(base_url, self.id),
+        }
+    
+    def action_read_all_scanned(self):
+        return {
+            'type': 'ir.actions.act_window',
+            'name': ('Paket Scan'),
+            'res_model': 'myfuture.sent.paket',
+            'view_type': 'list',
+            'view_mode': 'list',
+            'domain': [('state','=','check_out'),('paket_id.move_id','=',self.id)],
+            'context':{},
+        }
+    
+
+    def action_update_status_paket(self):
+        view_id = self.env.ref('my_future_custom.my_future_paket_tree').id,
+        return {
+			'name': 'Update Status Paket',
+			'type': 'ir.actions.act_window',
+			'view_mode': 'list',
+			"view_type": "list",
+			'res_model': 'myfuture.paket',
+            'domain': [('move_id','=',self.id)],
+			'target': 'new',
+			'view_id': view_id,
+		}
+
+class AccountPayment(models.Model):
+    _inherit = 'account.payment'
+
+    mobile = fields.Char('No Whatsapp', related="partner_id.mobile", readonly=False)
+    partner_id = fields.Many2one(
+        comodel_name='res.partner',
+        string="Customer",
+        store=True, readonly=False, ondelete='restrict',
+        compute='_compute_partner_id',
+        domain="['|', ('parent_id','=', False), ('is_company','=', True)]",
+        tracking=True,
+        check_company=True)
+    
+    @api.model_create_multi
+    def create(self, vals_list):
+        res = super().create(vals_list)
+        for vals in res:
+            vals.action_post()
+        return res
+    
+   
+
+class AccountMoveLine(models.Model):
+    _inherit = "account.move.line"
+
+    keep_id = fields.Many2one('my.future.keep.order', 'Keep ID')
+    comment_id = fields.Many2one('sgeede.facebook.comment', 'Comment ID')
+    size_id = fields.Many2one('my.future.product.size', 'Size')
+    color = fields.Char("Warna", related="product_id.color")
+    weight = fields.Float("Berat", compute="_compute_weight")
+    total_weight = fields.Float("Berat Total", compute="_compute_weight_total")
+
+    @api.depends("product_id")
+    def _compute_weight(self):
+        for line in self:
+            if line.product_id:
+                line.weight = line.product_id.weight * line.quantity
+            else:
+                line.weight = 0.00
+
+    @api.depends("weight", "quantity")
+    def _compute_weight_total(self):
+        for line in self:
+            line.total_weight = line.weight*line.quantity

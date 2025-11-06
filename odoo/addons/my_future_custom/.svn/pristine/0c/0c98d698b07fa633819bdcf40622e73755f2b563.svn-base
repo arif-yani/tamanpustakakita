@@ -1,0 +1,28 @@
+# -*- coding: utf-8 -*- 
+import datetime
+
+from odoo import api, fields, models, _
+from odoo.exceptions import AccessDenied, AccessError, UserError, ValidationError
+
+class UpdateKeepOrder(models.TransientModel):
+	_name = "update.keep.order"
+
+	get_product = fields.Selection([('dapat','Dapat'), ('tidak','Tidak')], string="Dapat Product")
+	state = fields.Selection([('keep','Keep'),('totalan','Totalan'),('order_supplier','Order Dengan Supplier'),
+                              ('waiting_wa','Waiting For WA'),('done','Done')], string="Status")
+
+	def action_update_keep(self):
+		context = self._context
+		partner = self.env['my.future.keep.order']
+		keep_ids = context['active_ids']
+		domain = [ ('id','in',keep_ids), ]
+		keep_obj = partner.search(domain)
+		for keep in keep_obj:
+			if self.get_product:
+				keep.write({
+                        'get_product': self.get_product
+                    })
+			if self.state:
+				keep.write({
+                        'state': self.state
+                    })

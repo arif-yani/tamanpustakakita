@@ -1,0 +1,51 @@
+{
+    'name': 'My Future Custom Module',
+    'version': '1.0',
+    'author': 'SGEEDE',
+    'summary': 'My Future Custom Module',
+    'description': """
+        My Future Custom Module
+    """,
+    'website': 'https://www.sgeede.com',
+    'depends': ['delivery', 'product', 'base', 'sale_management', 'stock','whatsapp','sgeede_facebook_int', 'account_accountant', 'report_xlsx','website'],
+    'category': 'Extra Tools',
+    'demo': [],
+    'data': [
+
+        'data/myfuture_data.xml',
+        'security/ir.model.access.csv',
+        'security/myfuture_security.xml',
+
+        
+        'report/ir_action_report.xml',
+        'report/invoice_report.xml',
+        'report/myfuture_label.xml',
+
+        'wizard/my_future_create_order_views.xml',
+        'wizard/my_future_summary_product_keep_views.xml',
+        'wizard/whatsapp_composer_views.xml',
+        'wizard/payment_link_wizard_views.xml',
+        'wizard/update_keep_order_views.xml',
+        'wizard/myfuture_search_paket_view.xml',
+
+        'views/product_product_views.xml',
+        'views/my_future_product_size.xml',
+        'views/my_future_keep_order_views.xml',
+        'views/res_partner_views.xml',
+        'views/sgeede_facebook_views.xml',
+        'views/sent_order_views.xml',
+        'views/account_views.xml',
+        'views/website_form.xml',
+        'views/my_future_whatsapp_log.xml',
+        'views/my_future_menuitem_views.xml',
+
+        
+    ],
+    'assets': {
+        'web.assets_frontend': [
+            'my_future_custom/static/src/js/custom.js',
+        ],
+    },
+    'installable': True,
+    'qweb': [],
+}

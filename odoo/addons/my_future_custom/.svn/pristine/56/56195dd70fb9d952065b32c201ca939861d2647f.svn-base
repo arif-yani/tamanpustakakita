@@ -1,0 +1,25 @@
+# -*- encoding: utf-8 -*-
+from odoo import api, fields, models, tools, _
+from odoo.exceptions import UserError, ValidationError
+
+class ProductTemplate(models.Model):
+    _inherit = "product.template"
+
+    color = fields.Char("Color")
+    size_ids = fields.Many2many('my.future.product.size', 'product_id', string='Size')
+    default_code = fields.Char(string="Code")
+    
+    
+class ProductProduct(models.Model):
+    _inherit = "product.product"
+
+    default_code = fields.Char(string="Code")
+
+
+class ProductSize(models.Model):
+    _name = "my.future.product.size"
+
+    name = fields.Char('Name', required=True)
+    lenght = fields.Float('Lenght (cm)')
+    width = fields.Float('Width (cm)')
+    height = fields.Float('Height (cm)')

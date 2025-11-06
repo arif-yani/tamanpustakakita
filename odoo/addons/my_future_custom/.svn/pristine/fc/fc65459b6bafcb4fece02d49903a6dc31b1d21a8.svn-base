@@ -1,0 +1,32 @@
+# Part of Odoo. See LICENSE file for full copyright and licensing details.
+
+from werkzeug import urls
+
+from odoo import _, api, fields, models
+
+from odoo.addons.payment import utils as payment_utils
+
+
+class PaymentLinkWizard(models.TransientModel):
+    _inherit = 'payment.link.wizard'
+    _description = "Generate Payment Link"
+
+    description = fields.Char("Description")
+    formatted_amount = fields.Char("Formatted Amount", compute="_compute_formatted_amount")
+
+    @api.depends('amount')
+    def _compute_formatted_amount(self):
+        for wiz in self:
+            wiz.formatted_amount = "Rp {:,.2f}".format(wiz.amount)
+
+    @api.depends('amount', 'currency_id', 'partner_id', 'company_id')
+    def _compute_link(self):
+        for payment_link in self:
+            related_document = self.env[payment_link.res_model].browse(payment_link.res_id)
+            base_url = related_document.get_base_url()  # Don't generate links for the wrong website
+            url_params = {
+                'amount': self.amount,
+                'access_token': self._get_access_token(),
+                **self._get_additional_link_values(),
+            }
+            payment_link.link = f'{base_url}/payment/pay?{urls.url_encode(url_params)}'

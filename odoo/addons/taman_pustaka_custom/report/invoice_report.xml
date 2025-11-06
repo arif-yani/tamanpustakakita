@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <template id="report_invoice">
+            <t t-call="web.html_container">
+                <t t-foreach="docs" t-as="o">
+                    <t t-call="web.external_layout">
+                        <div class="page">
+                            <h2 class="text-center" style="margin-top: 10px;">
+                                <span t-esc="'Litsquad Note'" /> </h2>
+                            
+                            <!-- <hr style="border-top: 2px solid #ddd;"/> -->
+
+                            <div class="row">
+                                <div class="col-6">
+                                    <img t-if="o.company_id.logo" 
+                                    t-attf-src="data:image/png;base64,{{ o.company_id.logo }}" 
+                                    style="max-height: 100px;" alt="Logo Perusahaan"/>
+                                </div>
+                                <div class="col-6 text-right">
+                                    <div style="width: auto; float: right;">
+                                        <h5 style="margin-top: 0;text-align:right;">Taman Pustaka Kita</h5> 
+                                        <p class="mb-0" style="text-align:right;">
+                                            <span t-esc="'PustakaBuku.Kita'" /> </p>
+                                        <p class="mb-0" style="text-align:right;">
+                                            <span t-esc="'pustakabuku.kita@gmail.com'" /> </p>
+                                        <p class="mb-0" style="text-align:right;">
+                                            <span t-esc="'+6285321202421'" /> </p>
+                                        <p class="mb-0" style="text-align:right;">
+                                            <span t-esc="'Tualang Kab. Siak'" /> </p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+
+                            <div class="row mt-4" style="padding:20px;background-color:#F2F2F2;">
+                                <div class="col-6">
+                                    <h6><b><span t-esc="'BILL TO'" /></b></h6> <p class="mb-0">
+                                        <span t-esc="o.partner_id.name" /> </p>
+                                     <p class="mb-0">
+                                        <span t-esc="o.partner_id.street"/> <span t-if="o.partner_id.street2">,<span t-esc="o.partner_id.street2"/></span> </p>
+                                    <p class="mb-0">
+                                        <span t-esc="o.partner_id.email" /> </p>
+                                    <p class="mb-0">
+                                        <span t-esc="o.partner_id.mobile" /> </p>
+                                </div>
+                                 <div class="col-6">
+                                    <table style="width: auto; float: right;border:transparent;font-size:14px;">
+                                        <tbody>
+                                            <tr>
+                                                <td class="text-left font-weight-bold">Delivery Note #</td>
+                                                <td class="text-right" style="text-align:right;"><span t-field="o.name"/></td> </tr>
+                                            <tr>
+                                                <td class="text-left font-weight-bold">Tanggal Peminjaman</td>
+                                                <td class="text-right" style="text-align:right;"><span t-field="o.invoice_date" t-options='{"widget": "date", "format": "d MMM y"}'/></td> </tr>
+
+                                            <tr>
+                                                <td class="text-left font-weight-bold">Tanggal Pengembalian</td>
+                                                <td class="text-right" style="text-align:right;"><span t-field="o.waktu_pengembalian" t-options='{"widget": "date", "format": "d MMM y"}'/></td> </tr>
+                                            </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <div class="row mt-5">
+                                <div class="col-12">
+                                    <table class="table table-sm table-borderless">
+                                        <thead>
+                                            <tr style="border-bottom: 2px solid #ddd;">
+                                                <th>Item</th>
+                                                <th class="text-center">Quantity</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr t-foreach="o.invoice_line_ids" t-as="line">
+                                                <td><span t-esc="line.name"/></td> 
+                                                <td class="text-center"><span t-esc="line.quantity"/></td>
+                                            </tr>
+                                            </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            <br/><br/><br/>
+                            <div class="row">
+                                <div class="col-6">
+                                    <p class="mt-5">
+                                        <span class="font-weight-bold"><t t-esc="o.narration"/></span> </p>
+                                </div>
+                                <!-- <div class="col-6">
+                                    <table class="table table-sm" style="width: auto; float: right;">
+                                        <tbody>
+                                            <tr>
+                                                <td class="text-left font-weight-bold">Subtotal</td>
+                                                <td class="text-right">Rp0</td> </tr>
+                                            <tr class="font-weight-bold" style="border-top: 2px solid #ddd;">
+                                                <td class="text-left">Grand Total</td>
+                                                <td class="text-right">Rp0</td> </tr>
+                                        </tbody>
+                                    </table>
+                                </div> -->
+                            </div>
+
+                        </div>
+                    </t>
+                </t>
+            </t>
+        </template>
+
+
+
+    <template id="report_invoice_myfuture">
+        <t t-call="web.html_container">
+            <t t-call="taman_pustaka_custom.report_invoice"/>
+        </t>
+    </template>
+
+    </data>
+</odoo>

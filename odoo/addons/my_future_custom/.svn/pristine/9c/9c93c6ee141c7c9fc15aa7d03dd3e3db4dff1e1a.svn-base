@@ -1,0 +1,54 @@
+from odoo import api, fields, models
+import time
+from datetime import datetime, timedelta
+import requests
+import json
+from odoo.exceptions import UserError, ValidationError
+
+class myfuture_paket(models.Model):
+    _name = "myfuture.paket"
+    _description = "My Future Paket"
+
+    name = fields.Char('Nama')
+    weight = fields.Float('Berat')
+    remark = fields.Char('Catatan')
+    is_titipan = fields.Boolean("Titipan", default=False)
+    move_id = fields.Many2one('account.move', 'Move ID')
+    ongkir_paket_state =  fields.Selection([('lunas','Lunas'), ('belum_lunas','Belum Lunas')], string="Ongkir", default="belum_lunas")
+    partner_id = fields.Many2one('res.partner', related="move_id.partner_id")
+
+    def write_confirmed_weight(self, move):
+        move.confirmed_weight = sum([paket.weight for paket in move.paket_line_ids if paket.ongkir_paket_state == 'lunas'])
+        line_ongkir_id = self.env['account.move.line'].search([('move_id','=', move._origin.id),('name','=', 'Total Ongkir')], limit=1)
+        print("masuk", move.confirmed_weight)
+        if line_ongkir_id:
+            if move.state != 'draft':
+                move.button_draft()
+            line_ongkir_id.quantity = move.confirmed_weight
+            if isinstance(move.id, int):
+                move.action_post()
+
+    def write(self, vals):
+        res = super(myfuture_paket, self).write(vals)
+        print("check value", vals)
+        self.write_confirmed_weight(self.move_id)
+        return res
+
+
+class myfuture_sent_paket(models.Model):
+    _name = "myfuture.sent.paket"
+
+    name = fields.Char('Nama')
+    paket_id = fields.Many2one("myfuture.paket", "Paket ID")
+    check_out_time = fields.Datetime("Check Out Time")
+    state = fields.Selection([('draft','Draft'),('check_out','Check Out'),('sent','Sent')])
+    weight = fields.Float('Berat', related="paket_id.weight")
+    sent_to = fields.Selection([('batam','Batam'), ('luar_batam','Luar Batam')])
+    kecamatan_id = fields.Many2one("myfuture.kecamatan", "Location")
+    remark = fields.Char('Catatan', related="paket_id.remark")
+
+    def unlink(self):
+        if not self.env.user.has_group("my_future_custom.group_admin"):
+            raise ValidationError("Hanya Admin yang bisa menghapus record, silahkan hubungi administrator.")
+        res = super().unlink()
+        return res

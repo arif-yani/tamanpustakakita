@@ -1,0 +1,19 @@
+import odoo.addons.decimal_precision as dp
+from odoo import api, fields, models, tools, _
+from odoo.exceptions import UserError, ValidationError
+import time
+from datetime import datetime, timedelta
+
+class ResPartner(models.Model):
+    _inherit = "res.partner"
+
+    is_blacklist_customer = fields.Boolean('Blacklist Customer', default=False)
+    is_announced = fields.Boolean('Have Send Message', default=False, compute="_compute_is_annouced", readonly=False, store=True)
+
+    @api.depends('is_blacklist_customer')
+    def _compute_is_annouced(self):
+        for line in self:
+            if line.is_blacklist_customer:
+                line.is_announced = False
+            else:
+                line.is_announced = False

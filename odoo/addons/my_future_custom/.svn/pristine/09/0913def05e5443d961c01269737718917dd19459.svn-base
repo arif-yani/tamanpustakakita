@@ -1,0 +1,28 @@
+{
+    'name': 'My Future Custom Module',
+    'version': '1.0',
+    'author': 'SGEEDE',
+    'summary': 'My Future Custom Module',
+    'description': """
+        My Future Custom Module
+    """,
+    'website': 'https://www.sgeede.com',
+    'depends': ['delivery', 'product', 'base', 'sale', 'stock','whatsapp','sgeede_facebook_int', 'account_accountant', 'report_xlsx'],
+    'category': 'Extra Tools',
+    'demo': [],
+    'data': [
+
+        'security/ir.model.access.csv',
+        
+        'report/ir_action_report.xml',
+
+        'views/product_product_views.xml',
+        'views/my_future_product_size.xml',
+        'views/my_future_keep_order_views.xml',
+        'views/my_future_menuitem_views.xml',
+
+        
+    ],
+    'installable': True,
+    'qweb': [],
+}

@@ -1,0 +1,250 @@
+from odoo import api, fields, models
+import time
+from datetime import datetime, timedelta
+import requests
+import json
+from odoo.exceptions import UserError, ValidationError
+
+class sgeede_facebook_live(models.Model):
+    _name = "sgeede.facebook.live"
+    _description = "Facebook live"
+
+    name = fields.Char('Name', required=True)
+    duration = fields.Float('Duration Live', compute="_compute_duration_live")
+    start_live = fields.Datetime('Start Live')
+    end_live = fields.Datetime('End Live')
+    live_date = fields.Date('Live Date')
+    facebook_live_id = fields.Char('Live ID', required=True)
+    line_ids = fields.One2many('sgeede.facebook.product', 'live_id',string="Active Product")
+    comment_ids = fields.One2many('sgeede.facebook.comment', 'live_id', string="Comment")
+    is_active = fields.Boolean('Live', default=False)
+    state = fields.Selection([('draft','Draft'), ('live','On Live'), ('done','Done'), ('cancel','Cancel')], default="draft")
+    note = fields.Html('Note')
+    partner_id = fields.Many2one('res.partner', 'Host', required=True)
+    page_id = fields.Many2one('sgeede.facebook.page', 'Page', required=True)
+    sum_comment = fields.Integer('Sum Comment', compute="_compute_sum_comment", default=0)
+    valid_comment_tmpl_id = fields.Many2one('whatsapp.template', 'Valid Comment Template')
+
+    @api.depends('start_live', 'end_live')
+    def _compute_duration_live(self):
+        for line in self:
+            if line.start_live and line.end_live:
+                time_live = line.end_live - line.start_live
+                line.duration = time_live.total_seconds() / 3600.0
+            else:
+                line.duration = False
+
+    @api.depends('comment_ids')
+    def _compute_sum_comment(self):
+        for line in self:
+            if len(line.comment_ids) > 0:
+                line.sum_comment = len(line.comment_ids)
+            else:
+                line.sum_comment = 0
+
+    def _get_formatted_body(self, demo_fallback=False, variable_values=None):
+        self.ensure_one()
+        variable_values = variable_values or {}
+        header = ''
+        if self.valid_comment_tmpl_id.header_type == 'text' and self.valid_comment_tmpl_id.header_text:
+            header_variables = self.valid_comment_tmpl_id.variable_ids.filtered(lambda line: line.line_type == 'header')
+            if header_variables:
+                fallback_value = header_variables[0].demo_value if demo_fallback else ' '
+                header = self.valid_comment_tmpl_id.header_text.replace('{{1}}', variable_values.get('header-{{1}}', fallback_value))
+        body = self.valid_comment_tmpl_id.body
+        for var in self.valid_comment_tmpl_id.variable_ids.filtered(lambda var: var.line_type == 'body'):
+            attr_chain = var.field_name.split('.') if var.field_name else False
+            obj = self
+            if attr_chain:
+                for attr in attr_chain:
+                    obj = getattr(obj, attr, None)
+            fallback_value = obj if attr_chain else var.demo_value
+            body = body.replace(var.name, variable_values.get(f'{var.line_type}-{var.name}', fallback_value))
+        return self.valid_comment_tmpl_id._format_markup_to_html(f'{header}\n{body}' if header else body)
+
+    def start_post_live(self):
+        if self.state == 'draft':
+            activate_cron = self.env['ir.cron'].search([('code','ilike','cron_run_create_comment_when_live'),('active','=',False)])
+            if activate_cron:
+                activate_cron.active = True
+                self.state = 'live'
+                self.start_live = datetime.now()
+            else:
+                raise UserError("Live Cannot Be Start, Please End Previous Live Session to Start.")
+
+    def end_post_live(self):
+        if self.state == 'live':
+            deactivate_cron = self.env['ir.cron'].search([('code','ilike','cron_run_create_comment_when_live'),('active','=',True)])
+            if deactivate_cron:
+                deactivate_cron.active = False
+                self.state = 'done'
+                self.end_live = datetime.now()
+            else:
+                raise UserError("Live Cannot Be End, Check with tour administrator.")
+
+    def cron_run_create_comment_when_live(self):
+        live_obj = self.env["sgeede.facebook.live"].search([])
+        for line in live_obj:
+            if line.get_all_comments() and line.state == 'live':
+                line.create_comment()
+
+    def get_all_comments(self):
+        api_url = "https://graph.facebook.com/v19.0/"
+        self.page_id.cron_generate_token_data()
+        if self.page_id and self.facebook_live_id:
+            api_get_comment = api_url+self.facebook_live_id+"/comments?access_token="+self.page_id.page_token
+            headers = {
+                    'Content-Type':'application/json'
+                }
+            response_api = requests.get(api_get_comment, headers=headers)
+            comment_json = response_api.json()
+            if 'data' not in comment_json:
+                self.env['sgeede.facebook.api.log'].create({
+                    'name': 'Get Comments',
+                    'page_id': self.page_id.id,
+                    'running_date': datetime.now(),
+                    'state': 'failed',
+                    'message': comment_json,
+                })
+                return False
+            self.env['sgeede.facebook.api.log'].create({
+                'name': 'Get Comments',
+                'page_id': self.page_id.id,
+                'running_date': datetime.now(),
+                'state': 'success',
+                'message': comment_json,
+            })
+            return comment_json['data']
+        return False
+
+    def create_comment(self):
+        comments = self.get_all_comments()
+        for comment in comments:
+            sender_comment = False
+            sender_comment_id = False
+            if self.sum_comment > 0:
+                if comment['id'] in [comment.comment_id for comment in self.comment_ids]:
+                    continue
+            timestamp_str = comment['created_time']
+            formatted_timestamp = timestamp_str.replace("T", " ")
+            formatted_timestamp = formatted_timestamp.replace("+0000", "")
+            datetime_obj = datetime.strptime(formatted_timestamp, "%Y-%m-%d %H:%M:%S")
+            comment_user = None
+            if 'from' in comment:
+                if comment['from']['id'] == self.page_id.page_id:
+                    continue
+                sender_comment = comment['from']['name']
+                sender_comment_id = comment['from']['id']
+                comment_user = self.env['res.partner'].search([('facebook_account_id','=',sender_comment_id)])
+                if not comment_user:
+                    comment_user = self.env['res.partner'].create({
+                            'name': sender_comment,
+                            'facebook_account_id': sender_comment_id,
+                            'customer_rank': 1,
+                            'supplier_rank': 0,
+                        })
+            comment_live = self.comment_ids.create({
+                'partner_id': comment_user.id if comment_user != None else False,
+                'name': comment['message'],
+                'comment_id': comment['id'],
+                'sender': sender_comment,
+                'sender_comment_id': sender_comment_id,
+                'created_comment_time': datetime_obj,
+                'live_id': self.id,
+            })
+            self.check_valid_comment(comment_live)
+            self.reply_comment(comment_live)
+
+    def check_valid_comment(self, comment):
+        for product in self.line_ids:
+            if not product.product_code:
+                continue
+            for code in product.product_code:
+                if code.name.lower() in comment.name.lower():
+                    comment.is_valid = True
+                    comment.product_id = product.product_id.id
+                    comment.tag_id = code.id
+                    break
+                    
+
+
+    def reply_comment(self, comment):
+        if not comment.is_replied:
+            try:
+                api_url = "https://graph.facebook.com/v19.0/"
+                self.page_id.cron_generate_token_data()
+                api_post_comment = api_url+comment.comment_id+"/comments?access_token="+self.page_id.page_token
+                headers = {
+                        'Content-Type': 'application/json', 
+                    }
+                message = """Hallo Terima Kasih sudah menghubungi kami"""
+                if comment.is_valid:
+                    message = """
+Terima Kasih sudah mampir dilive Kami silahkan lanjutkan transaksi melalui Link dibawah
+https://sgeede.com/                
+"""
+                else:
+                    message = """
+Maaf Kode anda belum tepat, silahkan komen lagi, jika ada yng ingin anda tanyakan silahkan melaui link dibawah atau check katalog kami
+https://sgeede.com/                 
+"""
+                reply_message = {"message" : message}
+                response = requests.post(api_post_comment, headers=headers, data=json.dumps(reply_message))
+            except requests.RequestException as e:
+                print('Graph returned an error:', e)
+
+            post_json = response.json()
+            if 'id' not in post_json:
+                self.env['sgeede.facebook.api.log'].create({
+                    'name': 'Reply Comment',
+                    'page_id': self.page_id.id,
+                    'running_date': datetime.now(),
+                    'state': 'failed',
+                    'message': post_json,
+                })
+                return False
+            self.env['sgeede.facebook.api.log'].create({
+                'name': 'Reply Comment',
+                'page_id': self.page_id.id,
+                'running_date': datetime.now(),
+                'state': 'success',
+                'message': post_json,
+            })
+            comment.is_replied = True
+            return True
+        
+
+    def action_read_all_comments(self):
+        return {
+            'type': 'ir.actions.act_window',
+            'name': ('Facebook Comment'),
+            'res_model': 'sgeede.facebook.comment',
+            'view_type': 'list',
+            'view_mode': 'list',
+            'domain': [('live_id','=',self.id)],
+            'context':{},
+        }
+
+class sgeede_facebook_product(models.Model):
+    _name = "sgeede.facebook.product"
+    _description = "Facebook Product"
+
+    name = fields.Char('Description', compute="_compute_name", readonly=False)
+    product_id = fields.Many2one('product.product', string="Active Product")
+    product_template_id = fields.Many2one('product.template', string="Active Product")
+    product_qty = fields.Float(string="Stock")
+    product_uom_id = fields.Many2one('uom.uom',string="UOM", related="product_id.uom_id", readonly=False)
+    product_code = fields.Many2many('product.tag',string="Code", related="product_id.product_tag_ids", readonly=False)
+    sequence = fields.Integer('Sequence')
+    live_id = fields.Many2one('sgeede.facebook.live', 'Live ID')
+    post_id = fields.Many2one('sgeede.facebook.post', 'Post ID')
+
+
+
+    @api.depends('product_id')
+    def _compute_name(self):
+        for line in self:
+            if not line.product_id:
+                continue
+
+            line.name = line.product_id.display_name

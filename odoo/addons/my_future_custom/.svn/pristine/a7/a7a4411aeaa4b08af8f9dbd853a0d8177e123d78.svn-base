@@ -1,0 +1,168 @@
+from odoo import api, fields, models, tools, _
+from odoo.exceptions import UserError, ValidationError
+from datetime import date, timedelta
+
+class AccountMove(models.Model):
+    _inherit = "account.move"
+
+    titipan = fields.Char("Titipan")
+    harga_ongkir = fields.Monetary("Ongkir Per KG", compute="_compute_ongkir")
+    hutang = fields.Monetary("Sisa Hutang", compute="_compute_sisa_hutang")
+    sisa_dp = fields.Monetary("Sisa DP", compute="_compute_sisa_dp")
+    # payment_link = fields.Char("Payment Link", compute="_compute_payment_link")
+    wizard_create_id = fields.Integer('Wizard Create ID')
+    paket_line_ids = fields.One2many("myfuture.paket","move_id", string="Paket Line")
+    total_weight = fields.Float("Berat Total", compute="_compute_paket_line_ids")
+
+    @api.depends("invoice_line_ids","partner_id")
+    def _compute_paket_line_ids(self):
+        for move in self:
+            total_weight = sum(move.weight for move in move.invoice_line_ids) or 0
+            move.total_weight = total_weight or 0
+            
+                
+
+    @api.depends("partner_id")
+    def _compute_ongkir(self):
+        for line in self:
+            ongkir_obj = self.env['myfuture.ongkir'].search([('kecamatan_id','=',line.partner_id.kecamatan_id.id)],limit=1)
+            if line.partner_id.kota_id and line.partner_id.kota_id.name.upper() == "KOTA BATAM":
+                line.harga_ongkir = 10000
+            elif line.partner_id.kecamatan_id and ongkir_obj:
+                line.harga_ongkir = ongkir_obj.price
+            else:
+                line.harga_ongkir = False
+
+            if line.harga_ongkir:
+                check_ongkir_line = line.invoice_line_ids.search([('name','=', 'Total Ongkir')])
+                if check_ongkir_line:
+                    check_ongkir_line.unlink()
+                    line.invoice_line_ids.create({
+                            'name': "Total Ongkir",
+                            'amount': line.ongkir,
+                    })
+
+
+    @api.depends('needed_terms')
+    def _compute_invoice_date_due(self):
+        today = fields.Date.context_today(self)
+        for move in self:
+            move.invoice_date_due = move.needed_terms and max(
+                (k['date_maturity'] for k in move.needed_terms.keys() if k),
+                default=False,
+            ) or move.invoice_date_due or today + timedelta(days=2)
+
+    @api.depends("partner_id")
+    def _compute_sisa_hutang(self):
+        for line in self:
+            hutang = 0
+            if line.partner_id.unreconciled_aml_ids:
+                for unreconciled in line.partner_id.unreconciled_aml_ids:
+                    if unreconciled.amount_residual_currency > 0 and unreconciled.move_id.id != line.id:
+                        hutang += unreconciled.amount_residual_currency
+                line.hutang =  hutang
+            else:
+                line.hutang = 0
+
+    @api.depends("partner_id")
+    def _compute_sisa_dp(self):
+        for line in self:
+            sisa_dp = 0
+            if line.partner_id.unreconciled_aml_ids:
+                for unreconciled in line.partner_id.unreconciled_aml_ids:
+                    if unreconciled.amount_residual_currency < 0:
+                        sisa_dp += abs(unreconciled.amount_residual_currency)
+                line.sisa_dp =  sisa_dp
+            else:
+                line.sisa_dp = 0
+
+    def action_send_wa_payment_link(self):
+        for line in self:
+            if line.state == 'posted' and line.payment_state in ('not_paid', 'partial'):
+                tagihan_link = line.env["payment.link.wizard"].create({
+                    'res_id': line.id,
+                    'res_model': 'account.move',
+                    'amount': line.amount_total_signed,
+                    'partner_id': line.partner_id.id
+                })
+                template_id =  line.env['whatsapp.template'].search([('template_name','=','tagihan_customer_terbaru')], limit=1)
+                send_message_obj = line.env['whatsapp.composer'].create({
+                            'wa_template_id': template_id.id,
+                            'phone':line.partner_id.mobile,
+                            'res_ids': tagihan_link.ids,
+                            'res_model': 'payment.link.wizard',
+                        })
+                send_message_obj.action_send_message_my_future()
+
+    def action_cut_dp(self):
+        for dp in self.partner_id.unreconciled_aml_ids:
+            if dp.amount_residual_currency < 0:
+                self.js_assign_outstanding_line(dp.id)
+
+    def action_print_myfuture_label(self):
+        myfuture_paket = self.env['myfuture.paket']
+        total_weight = self.total_weight
+        self.paket_line_ids.unlink()
+        count = 0
+        if self.partner_id.kota_id and self.partner_id.kota_id.name.upper() != "KOTA BATAM":
+            while total_weight >= 1.3:
+                count += 1
+                myfuture_paket.create({
+                    'name': '%s-%s'%(self.name or False, count),
+                    'weight': 1.3,
+                    'move_id': self.id,
+                })
+                total_weight -= 1.3
+            if total_weight > 0:
+                count += 1
+                myfuture_paket.create({
+                    'name': '%s-%s'%(self.name or False, count),
+                    'weight': total_weight,
+                    'move_id': self.id,
+                })
+        else:
+            if total_weight > 0:
+                count += 1
+                myfuture_paket.create({
+                    'name': '%s-%s'%(self.name or False, count),
+                    'weight': total_weight,
+                    'move_id': self.id,
+                })
+        base_url = self.env['ir.config_parameter'].sudo().get_param('web.base.url')
+        return {
+            'name': 'Print Label',
+            'type': 'ir.actions.act_url',
+            'url': '%s/report/pdf/my_future_custom.myfuture_label/%s' %(base_url, self.id),
+        }
+
+
+class AccountPayment(models.Model):
+    _inherit = 'account.payment'
+
+    mobile = fields.Char('No Whatsapp', related="partner_id.mobile", readonly=False)
+    partner_id = fields.Many2one(
+        comodel_name='res.partner',
+        string="Customer",
+        store=True, readonly=False, ondelete='restrict',
+        compute='_compute_partner_id',
+        domain="['|', ('parent_id','=', False), ('is_company','=', True)]",
+        tracking=True,
+        check_company=True)
+    
+    @api.model_create_multi
+    def create(self, vals_list):
+        res = super().create(vals_list)
+        for vals in res:
+            vals.action_post()
+        return res
+    
+   
+
+class AccountMoveLine(models.Model):
+    _inherit = "account.move.line"
+
+    keep_id = fields.Many2one('my.future.keep.order', 'Keep ID')
+    comment_id = fields.Many2one('sgeede.facebook.comment', 'Comment ID')
+    size_id = fields.Many2one('my.future.product.size', 'Size')
+    color = fields.Char("Warna", related="product_id.color")
+    weight = fields.Float("Berat", related="product_id.weight")

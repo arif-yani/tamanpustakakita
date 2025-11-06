@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="action_summary_product_keep_xls" model="ir.actions.report">
+        <field name="name">Summary Product Keep</field>
+        <field name="model">my.future.summary.product.keep</field>
+        <field name="report_type">xlsx</field>
+        <field name="report_name">my_future_custom.report_summary_product_keep_xls</field>
+        <field name="report_file">my_future_custom.report_summary_product_keep_xls</field>
+        <field name="binding_type">report</field>
+    </record>
+
+
+    <record id="action_report_invoice" model="ir.actions.report">
+        <field name="name">Print Invoice</field>
+        <field name="model">account.move</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">my_future_custom.report_invoice_myfuture</field>
+        <field name="report_file">my_future_custom.report_invoice_myfuture</field>
+        <field name="print_report_name">'Invoice - %s' % (object.name)</field>
+        <!-- <field name="binding_model_id" eval="False"/> -->
+        <field name="binding_model_id" ref="model_account_move"/>
+        <field name="binding_type">report</field>
+    </record>
+</odoo>

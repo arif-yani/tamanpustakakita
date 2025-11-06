@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <menuitem name="Order" 
+    id="menu_my_future_order_activity" 
+    sequence="82"
+    parent="sgeede_facebook_int.menu_sgeede_facebook">
+
+        <menuitem name="Keep Order" 
+        id="menu_my_future_keep_order" 
+        action="action_my_future_keep_order" 
+        sequence="5"/>
+
+        <menuitem name="Sale Order" 
+        id="menu_my_future_sale_order" 
+        action="sale.action_quotations_with_onboarding" 
+        sequence="14"/>
+
+
+        <menuitem name="Product My Future" 
+        id="menu_my_future_product_variant" 
+        action="action_my_future_product" 
+        sequence="15"/>
+
+        
+        <menuitem name="Product" 
+        id="menu_sgeede_product_variant" 
+        action="stock.stock_product_normal_action" 
+        sequence="17"/>
+
+      
+
+        <menuitem name="Customer" 
+        id="menu_sgeede_customer" 
+        action="account.res_partner_action_customer" 
+        sequence="25"/>
+
+    </menuitem>
+
+    <menuitem name="Reporting" 
+    id="menu_my_future_reporting" 
+    sequence="84"
+    parent="sgeede_facebook_int.menu_sgeede_facebook">
+
+        <menuitem name="Summary Keep Order (Dapat)" 
+        id="menu_my_future_report_keep_order" 
+        action="action_my_future_summary_product" 
+        sequence="10"/>
+
+    </menuitem>
+
+
+
+    <menuitem name="Create Total Order By Date" 
+        id="menu_my_future_create_order" 
+        action="action_my_future_create_order" 
+        sequence="30"
+        parent="sgeede_facebook_int.menu_sgeede_facebook_sync"/>
+
+      <menuitem name="Product Size" 
+        id="menu_my_future_product_size" 
+        action="action_my_future_product_size" 
+        parent="sgeede_facebook_int.menu_sgeede_facebook_config"
+        sequence="20"/>
+
+</odoo>

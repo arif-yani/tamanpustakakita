@@ -1,0 +1,12 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+
+access_my_future_keep_order,my.future.keep.order,model_my_future_keep_order,,1,1,1,1
+access_my_future_product_size,my.future.product.size,model_my_future_product_size,,1,1,1,1
+access_my_future_create_order,my.future.create.order,model_my_future_create_order,,1,1,1,1
+access_my_future_summary_product_keep,my.future.summary.product.keep,model_my_future_summary_product_keep,,1,1,1,1
+access_my_future_whatsapp_log,my.future.whatsapp.log,model_my_future_whatsapp_log,,1,1,1,1
+access_update_keep_order,update.keep.order,model_update_keep_order,,1,1,1,1
+access_myfuture_provinsi,myfuture.provinsi,model_myfuture_provinsi,,1,1,1,1
+access_myfuture_kota,myfuture.kota,model_myfuture_kota,,1,1,1,1
+access_myfuture_kecamatan,myfuture.kecamatan,model_myfuture_kecamatan,,1,1,1,1
+access_myfuture_ongkir,myfuture.ongkir,model_myfuture_ongkir,,1,1,1,1

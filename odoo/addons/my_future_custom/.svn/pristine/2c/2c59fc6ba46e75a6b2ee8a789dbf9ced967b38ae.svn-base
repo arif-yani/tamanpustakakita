@@ -1,0 +1,7 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+
+access_my_future_keep_order,my.future.keep.order,model_my_future_keep_order,,1,1,1,1
+access_my_future_product_size,my.future.product.size,model_my_future_product_size,,1,1,1,1
+access_my_future_create_order,my.future.create.order,model_my_future_create_order,,1,1,1,1
+access_my_future_summary_product_keep,my.future.summary.product.keep,model_my_future_summary_product_keep,,1,1,1,1
+access_my_future_whatsapp_log,my.future.whatsapp.log,model_my_future_whatsapp_log,,1,1,1,1

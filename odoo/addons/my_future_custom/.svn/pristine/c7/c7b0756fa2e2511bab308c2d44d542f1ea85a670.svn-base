@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <record id="menu_form" model="website.menu">
+        <field name="name">Customer</field>
+        <field name="url">/webform</field>
+        <field name="parent_id" ref="website.main_menu"/>
+        <field name="sequence">10</field>
+    </record>
+
+    
+
+
+    <template id="create_customer" name="Customer">
+        <t t-call="website.layout">
+            <div id="wrap" class="oe_structure oe_empty">
+                <section class="s_title parallax s_parallax_is_fixed bg-black-50 pt24 pb24" data-vcss="001" data-snippet="s_title" data-scroll-background-ratio="1">
+                    <span class="s_parallax_bg oe_img_bg" style="background-image: url('/web/image/website.s_parallax_default_image'); background-position: 50% 0;"/>
+                    <div class="o_we_bg_filter bg-black-50"/>
+                    <div class="container">
+                        <h1>MY FUTURE PURCHASE FORM</h1>
+                    </div>
+                </section>
+                <section class="s_text_block pt40 pb40 o_colored_level " data-snippet="s_text_block">
+                    <div class="container s_allow_columns">
+                        <div class="row">
+                            <div class="col-lg-8 mt-4 mt-lg-0">
+                                <p>
+                                    Mohon lengkapi form pembelian dibawah ini.<br/>
+                                    Agar kami bisa memproses pembelian anda.
+                                </p>
+                                <section class="s_website_form" data-vcss="001" data-snippet="s_website_form">
+                                    <div class="container">
+                                        <form role="form" action="/create/customer/" method="post"  class="o_mark_required" data-mark="*" data-model_name="res.partner">
+                                            <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                            <div class="mb-0 py-2 col-12 s_website_form_field s_website_form_custom s_website_form_required" data-type="char" data-name="Field">
+                                                <div class="row s_col_no_resize s_col_no_bgcolor">
+                                                    <label class="col-form-label col-sm-auto s_website_form_label" style="width: 200px" for="name">
+                                                        <span class="s_website_form_label_content">Nama Akun Facebook</span>
+                                                        <span class="s_website_form_mark"> *</span>
+                                                    </label>
+                                                    <div class="col-sm">
+                                                        <input id="name" type="text" class="form-control s_website_form_input" name="name" required="required" placeholder="John Doe"/>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="mb-0 py-2 col-12 s_website_form_field s_website_form_custom" data-type="char" data-name="Field">
+                                                <div class="row s_col_no_resize s_col_no_bgcolor">
+                                                    <label class="col-form-label col-sm-auto s_website_form_label" style="width: 200px" for="mobile">
+                                                        <span class="s_website_form_label_content">No Whatsapp</span>
+                                                        <span class="s_website_form_mark"> *</span>
+                                                    </label>
+                                                    <div class="col-sm">
+                                                        <!-- <input id="country_code" type="tel" required="required" value="+62"   class="form-control s_website_form_input" name="mobile" readonly=""/>
+                                                        <input id="mobile" type="tel" required="required" placeholder="812345678" class="form-control s_website_form_input" name="mobile" data-fill-with="phone"/> -->
+                                                        <div class="row">
+                                                            <div class="col-sm-2"> <!-- Ubah ukuran kolom sesuai kebutuhan Anda -->
+                                                                <input id="country_code" type="tel" required="required" value="+62" class="form-control s_website_form_input" readonly=""/>
+                                                            </div>
+                                                            <div class="col-sm"> <!-- Kolom ini akan mengisi sisa ruang yang tersedia -->
+                                                                <input id="mobile" type="tel" required="required" placeholder="812345678" class="form-control s_website_form_input" name="mobile" data-fill-with="phone"/>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                             <div class="mb-0 py-2 col-12 s_website_form_field s_website_form_custom" data-type="char" data-name="Field">
+                                                <div class="row s_col_no_resize s_col_no_bgcolor">
+                                                    <label class="col-form-label col-sm-auto s_website_form_label" style="width: 200px" for="provinsi">
+                                                        <span class="s_website_form_label_content">Provinsi</span>
+                                                    </label>
+                                                    <div class="col-sm">
+                                                        <input id="provinsi" type="text" class="form-control s_website_form_input" name="provinsi" data-fill-with="commercial_company_name"/>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                           <div class="mb-0 py-2 col-12 s_website_form_field s_website_form_custom" data-type="char" data-name="Field">
+                                                <div class="row s_col_no_resize s_col_no_bgcolor">
+                                                    <label class="col-form-label col-sm-auto s_website_form_label" style="width: 200px" for="city">
+                                                        <span class="s_website_form_label_content">Kabupaten/Kota</span>
+                                                    </label>
+                                                    <div class="col-sm">
+                                                        <input id="city" type="text" class="form-control s_website_form_input" name="city" data-fill-with="commercial_company_name"/>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                             <div class="mb-0 py-2 col-12 s_website_form_field s_website_form_custom s_website_form_required" data-type="text" data-name="Field">
+                                                    <div class="row s_col_no_resize s_col_no_bgcolor">
+                                                        <label class="col-form-label col-sm-auto s_website_form_label" style="width: 200px" for="street">
+                                                            <span class="s_website_form_label_content">Alamat</span>
+                                                            <span class="s_website_form_mark"> *</span>
+                                                        </label>
+                                                        <div class="col-sm">
+                                                            <textarea id="street" class="form-control s_website_form_input" name="street" required=""></textarea>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                           <div class="mb-0 py-2 col-12 s_website_form_submit" data-name="Submit Button">
+                                                <div style="width: 200px;" class="s_website_form_label"/>
+                                                <!-- <button type="submit" class="btn btn-primary pull-left">Submit</button> -->
+                                                <a href="/contactus" role="button" class="btn btn-primary s_website_form_send">Submit</a>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </section>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </t>
+    </template>
+
+
+    <record id="customer_page" model="website.page">
+        <field name="url">/webform</field>
+        <field name="is_published">True</field>
+        <field name="view_id" ref="create_customer"/>
+        <field name="track">True</field>
+    </record>
+
+</odoo>

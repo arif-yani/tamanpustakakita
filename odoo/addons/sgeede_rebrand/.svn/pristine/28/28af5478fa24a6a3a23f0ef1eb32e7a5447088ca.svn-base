@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <record id="view_sgeede_enterprise_text_language" model="ir.ui.view">
+            <field name="name">SGEEDE Enterprise Text</field>
+            <field name="model">sgeede.enterprise.text</field>
+            <field name="arch" type="xml">
+                <form string="SGEEDE Enterprise Text">
+                    <group>
+                        <newline/>
+                        <p>Click the button below to change all text</p>
+                    </group>
+                    <footer>
+                        <button name="enterprise_text" string="Replace Text" type="object" class="btn-primary"/>
+                    </footer>
+                </form>
+            </field>
+        </record>
+
+        <record id="action_view_sgeede_enterprise_text_language" model="ir.actions.act_window">
+            <field name="name">SGEEDE Enterprise Rebrand Text</field>
+            <field name="type">ir.actions.act_window</field>
+            <field name="res_model">sgeede.enterprise.text</field>
+            <field name="view_mode">form</field>
+            <field name="target">new</field>
+        </record>
+
+        <menuitem
+        action="action_view_sgeede_enterprise_text_language"
+        id="menu_view_sgeede_enterprise_text_language"
+        parent="base.menu_translation"
+        sequence="-20"/>
+
+    </data>
+</odoo>

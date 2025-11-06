@@ -1,0 +1,206 @@
+# -*- coding: utf-8 -*-
+# Part of Odoo. See LICENSE file for full copyright and licensing details.
+import base64
+from datetime import datetime, timedelta
+import json
+import os
+import logging
+import re
+import requests
+import werkzeug.urls
+import werkzeug.utils
+import werkzeug.wrappers
+
+from itertools import islice
+from lxml import etree, html
+from textwrap import shorten
+from werkzeug.exceptions import NotFound
+from xml.etree import ElementTree as ET
+from psycopg2 import IntegrityError
+import threading
+import html2text
+
+import odoo
+from odoo import http, models, fields, _
+from odoo.http import request, Response
+from werkzeug.exceptions import BadRequest
+from odoo.exceptions import AccessDenied, ValidationError, UserError
+from odoo.addons.my_future_custom.controllers.rajaongkir import RajaOngkir
+
+
+class MyFutureControllers(http.Controller):
+
+    #GET RAK DATA
+    @http.route('/my_future/send_barcode', type='http', methods=['POST'], csrf=False)
+    def scan_barcode(self, **post):
+        barcode = post['barcode']
+        cleaned_barcode = barcode.replace("Shift", "")
+        cleaned_barcode = cleaned_barcode.replace("Alt", "")
+        respon_api = []
+        get_paket_scanned = request.env['myfuture.sent.paket'].sudo().search([('name','=',cleaned_barcode)])
+        paket_obj = request.env['myfuture.paket'].sudo().search([('name','=',cleaned_barcode),('move_id','!=',False),('move_id.state','=','posted')],limit=1)
+        print("check_res", cleaned_barcode, get_paket_scanned, paket_obj)
+        if not get_paket_scanned and paket_obj:
+            sent_to = False
+            if paket_obj.move_id.partner_id.kota_id.name.upper() == 'KOTA BATAM':
+                sent_to = 'batam'
+            else:
+                sent_to = 'luar_batam'
+            request.env["myfuture.sent.paket"].create({
+                'name': paket_obj.name,
+                'paket_id': paket_obj.id,
+                'check_out_time': datetime.now(),
+                'state': "check_out",
+                'kecamatan_id': paket_obj.move_id.partner_id.kecamatan_id.id,
+                'sent_to': sent_to
+            })
+            respon_api.append({
+                    'name': "success",
+                })
+        else:
+            respon_api.append({
+                    'name': "failed",
+                })
+        print("check_respon", respon_api)
+        return json.dumps(respon_api)
+
+    @http.route('/webform/<string:facebook_id>', type="http", auth="public", website=True)
+    def customer_webform(self, facebook_id,**kw):
+        partner_obj = request.env["res.partner"].sudo().search([('facebook_account_id','=',facebook_id)],limit=1)
+        provinsi_obj = request.env["myfuture.provinsi"].sudo().search([])
+        return http.request.render("my_future_custom.create_customer", {"name_obj":partner_obj.name,
+                                                                        "provinsi_obj":provinsi_obj,
+                                                                        "partner_id":partner_obj.id})  
+    
+    @http.route('/myfuture/get_city', type="json", auth="public", methods=['POST'], website=True, csrf=False)
+    def get_city(self,**kw):
+        data = json.loads(request.httprequest.data)
+        arr_data = []
+        provinsi_obj = request.env["myfuture.provinsi"].sudo().search([("id","=",data['id_provinsi'])],limit=1)
+        kota_obj = request.env["myfuture.kota"].sudo().search([])
+        for kota in kota_obj:
+            if provinsi_obj.code == int(str(kota.code)[:2]):
+                vals = {
+                    "id": str(kota.id),
+                    "name": kota.name,
+                    "selected": 0
+                }
+                arr_data.append(vals)
+        return arr_data
+    
+    @http.route('/myfuture/get_district', type="json", auth="public", methods=['POST'], website=True, csrf=False)
+    def get_district(self,**kw):
+        data = json.loads(request.httprequest.data)
+        arr_data = []
+        kota_obj = request.env["myfuture.kota"].sudo().search([("id","=",data['id_kota'])],limit=1)
+        kecamatan_obj = request.env["myfuture.kecamatan"].sudo().search([])
+        for kecamatan in kecamatan_obj:
+            if kota_obj.code == int(str(kecamatan.code)[:4]):
+                vals = {
+                    "id": str(kecamatan.id),
+                    "name": kecamatan.name,
+                    "selected": 0
+                }
+                arr_data.append(vals)
+        return arr_data
+
+    @http.route('/create/customer', type="http", auth="public", methods=['POST'], website=True)
+    def create_customer(self, **kw):
+        print("checkkw", kw)
+        if kw['mobile'][:1] == '0':
+            kw['mobile'] = '+62'+kw['mobile'][1:]
+        else:
+            kw['mobile'] = '+62'+kw['mobile']
+        partner_obj = request.env['res.partner'].sudo().search([('id','=',kw['partner_id'])])
+        if partner_obj:
+            partner_obj.write({
+                'mobile': kw['mobile'],
+                'street': kw['street'],
+                'provinsi_id': int(kw['provinsi_id']),
+                'kota_id': int(kw['myfuture_kota']),
+                'kecamatan_id': int(kw['kecamatan_id']),
+            })
+        else:
+            raise ValidationError("We dont have your facebook data, please comment in our post or live in facebook.")
+        return http.request.render("my_future_custom.customer_thanks")  
+
+
+    @http.route('/sgeede/webhook/get_post', methods=['GET','POST'] ,type='http', auth='public', csrf=False, website=True)
+    def get_post(self, **post):
+        if request.httprequest.method == 'POST':
+            values = request.httprequest.data
+            values = json.loads(values)
+            x = threading.Thread(target=self.order_push_server, args=(values,))
+            x.start()
+        res = Response('Success', status=200)
+        return res
+    
+    # @http.route('/sgeede/webhook/whatsapp_api', methods=['GET','POST'] ,type='http', auth='public', csrf=False, website=True)
+    # def whatsapp_api(self, **post):
+    #     if request.httprequest.method == 'POST':
+    #         order_obj = request.env['sgeede.shopee.webhook']
+    #         values = request.httprequest.data
+    #         values = json.loads(values)
+    #         x = threading.Thread(target=self.order_push_server, args=(values,))
+    #         x.start()
+    #     res = Response('Success', status=200)
+    #     return res
+
+
+    @http.route('/wa/send_message', type="http", auth='public', website="True")
+    def web_request_wa_send_message(self, phone,partner_id,message,*args, **kw):
+        url = "http://188.166.197.139:3000/api/sendMessage"
+        print("check_partner_id", partner_id.name)
+        first_letter = partner_id.name[0].upper()
+        api_key = "aec6e9e86dd250e6da2d146dde27c0bf"
+        if "A" <= first_letter and "M" >= first_letter:
+            api_key = "aec6e9e86dd250e6da2d146dde27c0bf"
+        else:
+            api_key = "cbb730a341e9ba45788691aab7c4c71e"
+        message = html2text.html2text(message)
+        cleaned_text = re.sub(r'\[(.*?)\]\(.*?\)', r'\1', message)
+        payload = {
+            'apiKey': api_key,
+            'phone': phone,
+            'message': cleaned_text,#request.env.user.partner_id.partner_os_id.otp_code,
+            'forward_type': '0'
+        }
+        headers = {
+            'Content-Type': 'application/x-www-form-urlencoded'
+        }
+
+        response = requests.post(url, headers=headers, data=payload)
+        request.env['my.future.whatsapp.log'].sudo().create(
+            {
+                'name': 'Send Message to %s'%phone,
+                'dst_number': phone,
+                'status_code': response.status_code,
+                'running_date': datetime.now(),
+                'message': cleaned_text,
+                'state': 'success' if response.status_code == 200 else 'failed',
+            }
+        )
+
+    @http.route(['/portal/ajax/rajaongkir_district_acc'], type='json', auth="public", methods=['POST'], website=True, csrf=False)
+    def get_rajaongkir_district(self, **kw):
+        env = request.env(user=odoo.SUPERUSER_ID)
+
+        data = json.loads(request.httprequest.data)
+        print("chek_datas", data)
+        district = data.get('rajaongkir_city_acc') or False
+        print("check_aa", district)
+        data = []
+        partner = request.env.user.partner_id
+        rajaongkir_district = request.env['res.partner'].browse(int(partner)).rajaongkir_district
+        results = RajaOngkir().get_district(district)
+
+        for res in results:
+            data.append({ 'id':res['subdistrict_id'], 'name':res['subdistrict_name'], 'selected': 1 if rajaongkir_district == res['subdistrict_id'] else 0 })
+            
+            if rajaongkir_district:
+                if rajaongkir_district == res['subdistrict_id']:
+                    partner.rajaongkir_district_name = res['subdistrict_name']
+
+        print("check_data", data)
+                    
+        return data

@@ -1,0 +1,60 @@
+import json
+import requests
+from odoo import api, fields, models, tools, _, SUPERUSER_ID
+from odoo.exceptions import UserError, ValidationError
+from datetime import datetime, timedelta
+from dateutil.relativedelta import relativedelta
+
+class sgeede_facebook_repy_comment(models.TransientModel):
+    _name = "sgeede.facebook.reply.comment"
+    _description = "Facehook Reply Comment"
+
+    comment_id = fields.Many2one('sgeede.facebook.comment', 'Comment')
+    message = fields.Text('Message')
+    page_id = fields.Many2one('sgeede.facebook.page', 'Page ID', related="comment_id.page_id")
+
+    def api_send_message(self):
+        try:
+            # Lakukan panggilan API dan simpan responsenya
+            api_url = "https://graph.facebook.com/v19.0/"
+            self.page_id.cron_generate_token_data()
+            api_post_comment = api_url+self.page_id.page_id+"/messages?access_token="+self.page_id.page_token
+            headers = {
+                    'Content-Type': 'application/json', 
+                }
+            reply_message = {
+                "recipient":{
+                        "id":f"{self.comment_id.partner_id.facebook_account_id}"
+                    },
+                    "messaging_type": "RESPONSE",
+                    "message":{
+                        "text":self.message
+                    }
+            }
+            response = requests.post(api_post_comment, headers=headers, data=json.dumps(reply_message))
+            print("check_response", response.json())
+           
+        except requests.RequestException as e:
+            print('Graph returned an error:', e)
+
+            # Tangani hasil respons
+        post_json = response.json()
+        if response.status_code == 400:
+            raise ValidationError(post_json['error']['message'])
+        if 'id' not in post_json:
+            self.env['sgeede.facebook.api.log'].create({
+                'name': 'Reply Comment',
+                'page_id': self.page_id.id,
+                'running_date': datetime.now(),
+                'state': 'failed',
+                'message': post_json,
+            })
+            return False
+        self.env['sgeede.facebook.api.log'].create({
+            'name': 'Reply Comment',
+            'page_id': self.page_id.id,
+            'running_date': datetime.now(),
+            'state': 'success',
+            'message': post_json,
+        })
+        return True

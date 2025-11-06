@@ -1,0 +1,74 @@
+from odoo import api, fields, models
+from datetime import datetime, timedelta
+from odoo.exceptions import UserError, ValidationError
+from odoo.addons.sgeede_facebook_int.models.sgeede_facebook_comment import sgeede_facebook_comment
+
+
+class sgeede_facebook_post(models.Model):
+    _inherit = "sgeede.facebook.post"
+
+    sum_keep_order = fields.Integer('Sum Keep', compute='_compute_sum_keep')
+
+    def _compute_sum_keep(self):
+        for line in self:
+            keep_obj = self.env['my.future.keep.order'].search([('post_id','=',line.id)])
+            if keep_obj:
+                line.sum_keep_order = len(keep_obj)
+            else:
+                line.sum_keep_order = 0
+
+    def action_view_keep_orders(self):
+        return {
+            'type': 'ir.actions.act_window',
+            'name': ('Keep Orders'),
+            'res_model': 'my.future.keep.order',
+            'view_type': 'list',
+            'view_mode': 'list',
+            'domain': [('post_id','=',self.id)],
+            'context':{},
+        }
+    
+    def action_view_sale_orders(self):
+        return {
+            'type': 'ir.actions.act_window',
+            'name': ('Sale Orders'),
+            'res_model': 'sale.order',
+            'view_type': 'form',
+            'view_mode': 'tree,form',
+            'domain': [('post_id','=',self.id)],
+            'context':{},
+        }
+    
+    def create_total_order(self):
+        keep_order_group_customer = {
+                customer
+                for customer, count in self.env['my.future.keep.order']._read_group(
+                    domain=[('state', '=', 'keep'), ('get_product', '=', 'dapat'),('post_id', '=', self.id)],
+                    groupby=['partner_id'],
+                    aggregates=['__count'],
+                )
+            }
+        if keep_order_group_customer:
+            previous_sale_obj = self.env['sale.order'].search([('post_id','=',self.id)])
+            if previous_sale_obj:
+                for pre_sale in previous_sale_obj:
+                    pre_sale.action_cancel()
+            for partner_id in keep_order_group_customer:
+                keep_obj = self.env['my.future.keep.order'].search([('post_id','=', self.id),('partner_id','=',partner_id.id), ('get_product', '=', 'dapat')])
+                sales_obj = self.env['sale.order'].create({
+                    'partner_id': partner_id.id,
+                    'is_keep_order': True,
+                    'post_id': self.id
+                })
+                for keep in keep_obj:
+                    self.env['sale.order.line'].create({
+                        'product_id': keep.product_id.id,
+                        'product_uom_qty': keep.quantity,
+                        'order_id': sales_obj.id,
+                        'size_id': keep.size_id.id,
+                        'keep_id': keep.id,
+                        'comment_id': keep.comment_id.id,
+                    })
+            return self.action_view_sale_orders()
+        else:
+            raise UserError('No keep order to create sale order!')

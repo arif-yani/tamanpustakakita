@@ -1,0 +1,54 @@
+from odoo import api, fields, models, tools, _
+from odoo.exceptions import UserError, ValidationError
+from datetime import date, datetime, timedelta
+
+class myfuture_search_paket(models.TransientModel):
+    _name = "myfuture.search.paket"
+
+    paket_id = fields.Many2one('myfuture.paket', "Paket ID")
+    paket = fields.Char("Paket")
+    count_scanner =  fields.Integer("Count Scan")
+
+    def action_checkout_paket(self):
+        print("check_data", self.paket)
+        if self.paket:
+            paket_obj = self.env['myfuture.paket'].search([('name','=',self.paket),('move_id','!=',False),('move_id.state','=','posted')],limit=1)
+            print("check_data", paket_obj)
+            if paket_obj:
+                # if paket_obj.ongkir_paket_state == 'belum_lunas':
+                #     raise ValidationError("Paket Belum lunas")
+                # if paket_obj.is_titipan:
+                    # raise ValidationError("Paket Titipan tidak bisa di scan.")
+                if self.env["myfuture.sent.paket"].search([('paket_id','=',paket_obj.id)]):
+                    raise ValidationError("Paket sudah discan")
+                else:
+                    sent_to = False
+                    if paket_obj.move_id.partner_id.kota_id.name.upper() == 'KOTA BATAM':
+                        sent_to = 'batam'
+                    else:
+                        sent_to = 'luar_batam'
+                    self.env["myfuture.sent.paket"].create({
+                        'name': paket_obj.name,
+                        'paket_id': paket_obj.id,
+                        'check_out_time': datetime.now(),
+                        'state': "check_out",
+                        'kecamatan_id': paket_obj.move_id.partner_id.kecamatan_id.id,
+                        'sent_to': sent_to
+                    })
+                    self.paket = False
+                    self.count_scanner += 1
+            else:
+                raise ValidationError("Paket Tidak ditemukan.")
+            return {
+                'name': 'Check Out Paket',
+                'view_mode': 'form',
+                'view_id': False,
+                'res_model': self._name,
+                'domain': [],
+                'context': dict(self._context, active_ids=self.ids),
+                'type': 'ir.actions.act_window',
+                'target': 'new',
+                'res_id': self.id,
+            } 
+                    
+            

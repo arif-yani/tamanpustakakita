@@ -1,0 +1,78 @@
+import odoo.addons.decimal_precision as dp
+from odoo import api, fields, models, tools, _
+from odoo.exceptions import UserError, ValidationError
+import time
+from datetime import datetime, timedelta
+from urllib.parse import quote
+
+class ResPartner(models.Model):
+    _inherit = "res.partner"
+
+    is_blacklist_customer = fields.Boolean('Blacklist Customer', default=False)
+    is_announced = fields.Boolean('Have Send Message', default=False, compute="_compute_is_annouced", readonly=False, store=True)
+    invoice_link_download =  fields.Char("Invoice Link", compute="_compute_invoice_link")
+    payment_link = fields.Char("Payment Link", compute="_compute_payment_link")
+
+    @api.depends("invoice_ids")
+    def _compute_invoice_link(self):
+        for line in self:
+            inv_arr_ids = []
+            all_child = line.with_context(active_test=False).search([('id', 'child_of', line.ids)])
+            domain = [('move_type', 'in', ('out_invoice', 'out_refund')),('partner_id', 'in', all_child.ids),
+                ('state','=' ,'posted'),('payment_state', 'in',  ['not_paid', 'partial'])]
+            invoice_obj = self.env['account.move'].search(domain)
+            for inv_line in invoice_obj:
+                inv_arr_ids.append(inv_line.id)
+            join_ids = quote(','.join(map(str, inv_arr_ids)))
+            action_id = self.env['ir.actions.actions'].search([('name','=','Invoices'),('type','=','ir.actions.report')],limit=1)
+            url = line.get_base_url()
+            if len(inv_arr_ids) > 0:
+                line.invoice_link_download =  f'{url}/web#action={action_id.id}&active_ids={join_ids}'
+            else:
+                line.invoice_link_download =  False
+
+    @api.depends("total_overdue")
+    def _compute_payment_link(self):
+        for line in self:
+            if line.total_overdue > 0:
+                create_link_payment = line.env['payment.link.wizard'].create({
+                   'res_id': line.id,
+                   'res_model': 'res.partner',
+                   'amount': line.total_overdue 
+                })
+                line.payment_link = create_link_payment.link
+            else:
+                line.payment_link = False
+
+
+    @api.depends('is_blacklist_customer')
+    def _compute_is_annouced(self):
+        for line in self:
+            if line.is_blacklist_customer:
+                line.is_announced = False
+            else:
+                line.is_announced = False
+
+    def _get_default_payment_link_values(self):
+        self.ensure_one()
+        return {
+            'amount': self.total_overdue,
+            'currency_id': self.currency_id.id,
+            'partner_id': self.id,
+            'amount_max': self.total_overdue,
+        }
+
+
+    def action_create_payment_link(self):
+        return {
+            'name': _('Create Payment Link'),
+            'res_model': 'payment.link.wizard',
+            'view_mode': 'form',
+            'views': [[False, 'form']],
+            'context': {
+                'active_model': 'res.partner',
+                'active_ids': self.ids,
+            },
+            'target': 'new',
+            'type': 'ir.actions.act_window',
+        }

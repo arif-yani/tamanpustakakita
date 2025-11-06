@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <menuitem name="Order" 
+    id="menu_my_future_order_activity" 
+    sequence="82"
+    parent="sgeede_facebook_int.menu_sgeede_facebook">
+
+        <menuitem name="Keep Order" 
+        id="menu_my_future_keep_order" 
+        action="action_my_future_keep_order" 
+        sequence="5"/>
+
+        <menuitem name="Sale Invoices" 
+        id="menu_my_future_sale_invoices" 
+        action="account.action_move_out_invoice_type" 
+        sequence="14"/>
+        
+        <menuitem name="Scan Label" 
+        id="menu_my_future_sent_order" 
+        action="action_confirm_sent_order" 
+        sequence="15"/>
+
+        <menuitem name="Paket" 
+        id="menu_myfuture_paket" 
+        action="action_myfuture_paket" 
+        sequence="16"/>
+
+        <menuitem name="Product My Future" 
+        id="menu_my_future_product_variant" 
+        action="action_my_future_product" 
+        sequence="17"/>
+
+        
+        <!-- <menuitem name="Product" 
+        id="menu_sgeede_product_variant" 
+        action="stock.stock_product_normal_action" 
+        sequence="18"/> -->
+
+      
+
+        <menuitem name="Customer" 
+        id="menu_sgeede_customer" 
+        action="account.res_partner_action_customer" 
+        sequence="25"/>
+
+    </menuitem>
+
+    <menuitem name="Reporting" 
+    id="menu_my_future_reporting" 
+    sequence="84"
+    parent="sgeede_facebook_int.menu_sgeede_facebook">
+
+        <menuitem name="Summary Keep Order (Dapat)" 
+        id="menu_my_future_report_keep_order" 
+        action="action_my_future_summary_product" 
+        sequence="10"/>
+
+    </menuitem>
+
+
+
+    <menuitem name="Create Total Order" 
+        id="menu_my_future_create_order" 
+        action="action_my_future_create_order" 
+        sequence="30"
+        parent="sgeede_facebook_int.menu_sgeede_facebook_sync"/>
+
+    <menuitem name="Scan Barcode" 
+        id="menu_my_future_search_paket" 
+        action="my_future_custom.myfuture_barode_dashboard_action" 
+        sequence="25"
+        parent="sgeede_facebook_int.menu_sgeede_facebook_sync"/>
+
+      <menuitem name="Product Size" 
+        id="menu_my_future_product_size" 
+        action="action_my_future_product_size" 
+        parent="sgeede_facebook_int.menu_sgeede_facebook_config"
+        sequence="5"/>
+
+     <menuitem name="Whatsapp Log" 
+        id="menu_my_future_whatsapp_log" 
+        action="action_my_future_whatsapp_log" 
+        parent="sgeede_facebook_int.menu_sgeede_facebook_config"
+        sequence="7"/>
+
+    <menuitem name="Kecamatan" 
+        id="menu_my_future_kecamatan" 
+        action="action_myfuture_kecamatan" 
+        sequence="30"
+        parent="contacts.menu_localisation"/>
+
+    <menuitem name="Kabupaten/Kota"
+        id="menu_my_future_kota" 
+        action="action_myfuture_kota" 
+        sequence="40"
+        parent="contacts.menu_localisation"/>
+
+    <menuitem name="Provinsi"
+        id="menu_my_future_provinsi" 
+        action="action_myfuture_provinsi" 
+        sequence="50"
+        parent="contacts.menu_localisation"/>
+
+    <menuitem name="Ongkir" 
+        id="menu_myfuture_ongkir" 
+        action="action_myfuture_ongkir" 
+        sequence="7"
+        parent="sgeede_facebook_int.menu_sgeede_facebook_config"/>
+
+    
+    <menuitem name="Messager Template" 
+        id="menu_sgeede_facebook_messager_template" 
+        action="my_future_custom.messager_template_action" 
+        sequence="6"
+        parent="sgeede_facebook_int.menu_sgeede_facebook_config"/>
+
+</odoo>

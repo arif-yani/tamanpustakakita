@@ -1,0 +1,83 @@
+from odoo import api, fields, models
+import time
+from datetime import datetime, timedelta
+import requests
+import html2text
+import json
+from odoo.exceptions import UserError, ValidationError
+
+class my_future_facebook_keep_order(models.Model):
+    _name = "my.future.keep.order"
+    _description = "Keep Order"
+
+    partner_id = fields.Many2one('res.partner', 'Customer')
+    keep_datetime = fields.Datetime('Keep Datetime')
+    product_id = fields.Many2one('product.product', 'Product')
+    size_id = fields.Many2one("my.future.product.size", string="Size")
+    price = fields.Float('Price', related='product_id.lst_price', readonly=False)
+    quantity = fields.Integer('PCS')
+    get_product = fields.Selection([('dapat','Dapat'), ('tidak','Tidak')], string="Dapat Product")
+    state = fields.Selection([('keep','Keep'),('totalan','Totalan'),('order_supplier','Order Dengan Supplier'),
+                              ('waiting_wa','Waiting For WA'),], string="Status", default="keep")
+    comment_id = fields.Many2one('sgeede.facebook.comment', string="Comment ID")
+    post_id = fields.Many2one('sgeede.facebook.post', string="Post ID", related="comment_id.post_id")
+    mobile = fields.Char('No Whatsapp', related="partner_id.mobile")
+    is_confirmed = fields.Boolean("Confirmed to customer", default=False)
+
+
+  
+    def action_update_keep_order(self):
+        view_id = self.env.ref('my_future_custom.myfuture_update_keep_form').id,
+        return {
+			'name': 'Update Keep Order',
+			'type': 'ir.actions.act_window',
+			'view_mode': 'form',
+			"view_type": "form",
+			'res_model': 'update.keep.order',
+			'target': 'new',
+			'view_id': view_id,
+		}
+
+
+    def action_send_message_waiting_wa(self):
+        keep_ids = self.search([('id','in',self._context['active_ids']),('state','=','waiting_wa')])
+        self.send_need_mobile(keep_ids.partner_id, keep_ids.comment_id.post_id.page_id[0])
+        print("check_id", keep_ids.partner_id)
+
+
+    def send_need_mobile(self, partner_ids, page_id):
+        for partner_id in partner_ids: 
+            api_url = "https://graph.facebook.com/v19.0/"
+            page_id.cron_generate_token_data()
+            api_post_comment = api_url+page_id.page_id+"/messages?access_token="+page_id.page_token
+            messager_obj =  self.env['whatsapp.template'].search([('template_name','=','messanger_request_number_phone_from_user')], limit=1)
+            send_message_obj = self.env['whatsapp.composer'].create({
+                    'wa_template_id': messager_obj.id,
+                    'phone': partner_id.mobile,
+                    'res_ids': partner_id.ids,
+                    'res_model': 'mres.partner',
+                })
+            body = send_message_obj._get_html_preview_whatsapp(rec=partner_id)
+            message = html2text.html2text(body)
+            message = message.replace("&gt;", "")
+            message = message.replace("&lt;", "")
+            headers = {
+                    'Content-Type': 'application/json', 
+                }
+            reply_message = {
+                "recipient":{
+                    "id": partner_id.facebook_account_id
+                },
+                "messaging_type": "MESSAGE_TAG",
+                "tag": "POST_PURCHASE_UPDATE",
+                "message":{
+                    "text": message
+                }
+            }
+            response = requests.post(api_post_comment, headers=headers, data=json.dumps(reply_message))
+            if response.status_code == 200:
+                partner_id.can_interaction = True
+            else:
+                print("failed to send", partner_id.name, response.json())
+                partner_id.can_interaction = False
+            

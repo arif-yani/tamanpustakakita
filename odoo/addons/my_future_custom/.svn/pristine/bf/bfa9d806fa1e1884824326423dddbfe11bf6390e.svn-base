@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+	<record id="view_post_form_inherit_my_future" model="ir.ui.view">
+            <field name="name">view.post.form.inherit.my.future</field>
+            <field name="model">sgeede.facebook.post</field>
+            <field name="inherit_id" ref="sgeede_facebook_int.view_post_form"/>
+            <field name="arch" type="xml">
+                <xpath expr="//div[@name='button_box']" position="inside">
+                    <button name="action_view_keep_orders"
+                        class="oe_stat_button"
+                        icon="fa-bookmark"
+                        type="object"
+                        help="List view of Keep Order">
+                        <div class="o_field_widget o_stat_info">
+                            <span class="o_stat_value d-flex gap-1">
+                                <field name="sum_keep_order" nolabel="1" class="oe_inline"/>
+                            </span>
+                            <span class="o_stat_text">Keep Order</span>
+                    </div>
+                    </button>
+                    <button name="action_view_sale_orders"
+                        class="oe_stat_button"
+                        icon="fa-truck"
+                        type="object"
+                        help="Sale Order">
+                        <div class="o_field_widget o_stat_info">
+                            <span class="o_stat_text">Sale Order</span>
+                    </div>
+                    </button>
+                </xpath>
+                <xpath expr="//header" position="inside">
+                    <button name="create_total_order" type="object"
+                        string="Create Order" class="oe_highlight"/>
+                </xpath>
+            </field>
+    </record>
+
+    <record id="view_live_form_inherit_my_future" model="ir.ui.view">
+            <field name="name">view.live.form.inherit.my.future</field>
+            <field name="model">sgeede.facebook.live</field>
+            <field name="inherit_id" ref="sgeede_facebook_int.view_live_form"/>
+            <field name="arch" type="xml">
+                <xpath expr="//page[@name='active_product']/field[@name='line_ids']/tree/field[@name='product_code']" position="replace">
+                    <field name="size_ids" widget="many2many_tags" optional="show"/>
+                </xpath>
+                <xpath expr="//page[@name='active_product']/field[@name='line_ids']/tree/field[@name='product_qty']" position="replace">
+                    <field name="is_active_product" readonly="1" force_save="1"/>
+                    <button name="active_product_button" string="Active" class="oe_highlight" type="object"/>
+                </xpath>
+            </field>
+    </record>
+
+
+    <record id="messager_template_action" model="ir.actions.act_window">
+        <field name="name">Messager Template</field>
+        <field name="type">ir.actions.act_window</field>
+        <field name="res_model">whatsapp.template</field>
+        <field name="view_mode">tree,kanban,form</field>
+        <field name="domain">[("facebook_messager","=",True)]</field>
+        <field name="context">{"default_facebook_messager":1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_empty_folder">
+                Create or sync Messager Templates.
+            </p>
+            <p>
+                You can retrieve templates from Facebook by clicking <strong>Sync Templates</strong> on the <a name="%(whatsapp.whatsapp_account_action)d" type="action" class="oe_link">WhatsApp Business Account</a>.
+                Or create templates here and send them for approval.
+                Please refer the <a href="https://developers.facebook.com/docs/whatsapp/message-templates/guidelines" target="_blank">Template Guidelines</a>
+            </p>
+        </field>
+    </record>
+</odoo>

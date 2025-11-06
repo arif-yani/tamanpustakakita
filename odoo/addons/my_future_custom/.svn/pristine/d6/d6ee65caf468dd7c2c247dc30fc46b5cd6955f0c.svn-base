@@ -1,0 +1,110 @@
+# -*- coding: utf-8 -*-
+# Part of Odoo. See LICENSE file for full copyright and licensing details.
+import base64
+from datetime import datetime, timedelta
+import json
+import os
+import logging
+import re
+import requests
+import werkzeug.urls
+import werkzeug.utils
+import werkzeug.wrappers
+
+from itertools import islice
+from lxml import etree, html
+from textwrap import shorten
+from werkzeug.exceptions import NotFound
+from xml.etree import ElementTree as ET
+from psycopg2 import IntegrityError
+import threading
+import html2text
+
+import odoo
+from odoo import http, models, fields, _
+from odoo.http import request, Response
+from werkzeug.exceptions import BadRequest
+from odoo.exceptions import AccessDenied, ValidationError, UserError
+
+
+
+class MyFutureControllers(http.Controller):
+
+
+    @http.route('/webform', type="http", auth="public", website=True)
+    def customer_webform(self, **kw):
+        return http.request.render("my_future_custom.create_customer")  
+    
+
+    @http.route('/create/customer/<string:model_name>', type="http", auth="public", methods=['POST'], website=True)
+    def create_customer(self,model_name, **kwargs):
+        if kwargs['mobile'][:1] == '0':
+            kwargs['mobile'] = '+62'+kwargs['mobile'][1:]
+        else:
+            kwargs['mobile'] = '+62'+kwargs['mobile']
+        partner_obj = request.env['res.partner'].sudo().search([('name','=',kwargs['name'])])
+        if partner_obj:
+            partner_obj.write({
+                'mobile': kwargs['mobile'],
+                'street': kwargs['street'],
+                'city': kwargs['city'],
+            })
+        else:
+            request.env['res.partner'].sudo().create({
+                'name': kwargs['name'],
+                'mobile': kwargs['mobile'],
+                'street': kwargs['street'],
+                'city': kwargs['city'],
+            })
+        request.redirect("/contactus")
+
+
+    @http.route('/sgeede/webhook/get_post', methods=['GET','POST'] ,type='http', auth='public', csrf=False, website=True)
+    def get_post(self, **post):
+        if request.httprequest.method == 'POST':
+            values = request.httprequest.data
+            values = json.loads(values)
+            x = threading.Thread(target=self.order_push_server, args=(values,))
+            x.start()
+        res = Response('Success', status=200)
+        return res
+    
+    # @http.route('/sgeede/webhook/whatsapp_api', methods=['GET','POST'] ,type='http', auth='public', csrf=False, website=True)
+    # def whatsapp_api(self, **post):
+    #     if request.httprequest.method == 'POST':
+    #         order_obj = request.env['sgeede.shopee.webhook']
+    #         values = request.httprequest.data
+    #         values = json.loads(values)
+    #         x = threading.Thread(target=self.order_push_server, args=(values,))
+    #         x.start()
+    #     res = Response('Success', status=200)
+    #     return res
+
+
+    @http.route('/wa/send_message', type="http", auth='public', website="True")
+    def web_request_wa_send_message(self, phone,message,*args, **kw):
+        url = "http://3.0.188.177:8080/api/sendMessage"
+        payload = {
+            'apiKey': 'ccddae5c8e2acbc9794e5ca666843865',
+            'phone': phone,
+            'message': html2text.html2text(message),#request.env.user.partner_id.partner_os_id.otp_code,
+            'forward_type': '0'
+        }
+        headers = {
+            'Content-Type': 'application/x-www-form-urlencoded'
+        }
+
+        response = requests.post(url, headers=headers, data=payload)
+        request.env['my.future.whatsapp.log'].sudo().create(
+            {
+                'name': 'Send Message to %s'%phone,
+                'dst_number': phone,
+                'status_code': response.status_code,
+                'running_date': datetime.now(),
+                'message': html2text.html2text(message),
+                'state': 'success' if response.status_code == 200 else 'failed',
+            }
+        )
+
+        print("response.text", response)
+

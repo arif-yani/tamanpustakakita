@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="payment_midtrans_form" model="ir.ui.view">
+        <field name="name">Midtrans Provider Form</field>
+        <field name="model">payment.provider</field>
+        <field name="inherit_id" ref="payment.payment_provider_form"/>
+        <field name="arch" type="xml">
+            <group name="provider_credentials" position='inside'>
+
+                <group invisible="code != 'midtrans'">
+                    
+                    <group string="Midtrans Sandbox">
+                        <field name="midtrans_test_id_merchant" 
+                            required="code == 'midtrans'"/>
+                        <field name="midtrans_test_client_key" 
+                            required="code == 'midtrans'"/>
+                        <field name="midtrans_test_server_key" 
+                            required="code == 'midtrans'"/>
+                    </group>
+                    <group string="Midtrans Production">
+                        <field name="midtrans_prod_id_merchant" 
+                            required="code == 'midtrans'"/>
+                        <field name="midtrans_prod_client_key" 
+                            required="code == 'midtrans'"/>
+                        <field name="midtrans_prod_server_key" 
+                            required="code == 'midtrans'"/>
+                    </group>
+                </group>
+            </group>
+        </field>
+    </record>
+
+
+</odoo>

@@ -1,0 +1,17 @@
+# -*- encoding: utf-8 -*-
+from odoo import api, fields, models, tools, _
+from odoo.exceptions import UserError, ValidationError
+
+class ProductTemplate(models.Model):
+    _inherit = "product.template"
+
+    size_id = fields.Many2one("my.future.product.size", string="Size")
+    
+
+class ProductSize(models.Model):
+    _name = "my.future.product.size"
+
+    name = fields.Char('Name', required=True)
+    lenght = fields.Float('Lenght (cm)')
+    width = fields.Float('Width (cm)')
+    height = fields.Float('Height (cm)')

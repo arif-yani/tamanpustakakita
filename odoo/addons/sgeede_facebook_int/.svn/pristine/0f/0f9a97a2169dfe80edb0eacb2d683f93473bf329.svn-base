@@ -1,0 +1,95 @@
+from odoo import api, fields, models
+import time
+from datetime import datetime, timedelta
+import requests
+import json
+from odoo.exceptions import UserError, ValidationError
+
+class sgeede_facebook_comment(models.Model):
+    _name = "sgeede.facebook.comment"
+    _description = "Facebook Comment"
+
+
+    name = fields.Char('Name')
+    created_comment_time = fields.Datetime('Created Comment Time')
+    sender_comment_id = fields.Char('User Comment ID')
+    sender = fields.Char('Sender')
+    comment_id = fields.Char('Message ID')
+    is_replied = fields.Boolean('Replied', default=False)
+    is_valid = fields.Boolean('Valid', default=False)
+    live_id = fields.Many2one('sgeede.facebook.live', 'Live ID')
+    post_id = fields.Many2one('sgeede.facebook.post', 'Post ID')
+    page_id = fields.Many2one('sgeede.facebook.page', 'Page ID', compute="_compute_page_id")
+    partner_id = fields.Many2one('res.partner', 'Sender')
+    product_id = fields.Many2one('product.product', 'Product')
+    tag_id = fields.Many2one('product.tag',string="Code")
+    
+    @api.depends('post_id', 'live_id')
+    def _compute_page_id(self):
+        for line in self:
+            if line.post_id:
+                line.page_id = line.post_id.page_id.id
+            elif line.live_id:
+                line.page_id = line.live_id.page_id.id
+            else:
+                line.page_id = False
+
+    def get_all_comments(self, post_id, page_id):
+        api_url = "https://graph.facebook.com/v19.0/"
+        page_id.cron_generate_token_data()
+        if page_id and post_id:
+            api_get_comment = api_url+post_id.name+"/comments?access_token="+page_id.page_token
+            headers = {
+                    'Content-Type':'application/json'
+                }
+            response_api = requests.get(api_get_comment, headers=headers)
+            comment_json = response_api.json()
+            if not comment_json['data']:
+                return False
+            return comment_json['data']
+        return False
+
+    def create_comment(self, post_id, page_id):
+        comments = self.get_all_comments(post_id, page_id)
+        if comments:
+            for comment in comments:
+                sender_comment = False
+                sender_comment_id = False
+                timestamp_str = comment['created_time']
+                formatted_timestamp = timestamp_str.replace("T", " ")
+                formatted_timestamp = formatted_timestamp.replace("+0000", "")
+                datetime_obj = datetime.strptime(formatted_timestamp, "%Y-%m-%d %H:%M:%S")
+                comment_user = None
+                if 'from' in comment:
+                    sender_comment = comment['from']['name']
+                    sender_comment_id = comment['from']['id']
+                    comment_user = self.env['res.partner'].search([('facebook_account_id','=',sender_comment_id)])
+                    if not comment_user:
+                        comment_user = self.env['res.partner'].create({
+                            'name': sender_comment,
+                            'facebook_account_id': sender_comment_id,
+                            'customer_rank': 1,
+                            'supplier_rank': 0,
+                        })
+                self.create({
+                    'partner_id': comment_user.id if comment_user != None else False,
+                    'name': comment['message'],
+                    'comment_id': comment['id'],
+                    'sender': sender_comment,
+                    'sender_comment_id': sender_comment_id,
+                    'created_comment_time': datetime_obj,
+                    'post_id': post_id.id,
+                })
+
+    def action_reply_comment(self):
+        return {
+                'type':'ir.actions.act_window', 
+                'view_type':'form', 
+                'view_mode':'form',
+                'res_model':'sgeede.facebook.reply.comment', 
+                'target': 'new',
+                'context': {
+                    'default_comment_id': self.id,
+
+                }
+			}

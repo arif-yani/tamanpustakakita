@@ -1,0 +1,421 @@
+from odoo import api, fields, models
+import time
+from datetime import datetime, timedelta
+import requests
+import json
+from odoo.exceptions import UserError, ValidationError
+from odoo.addons.sgeede_facebook_int.models.sgeede_facebook_comment import sgeede_facebook_comment
+import html2text
+import re
+
+class sgeede_facebook_comment(models.Model):
+    _inherit = "sgeede.facebook.comment"
+
+
+    is_keep_order = fields.Boolean('Comment Keep Order', default=False)
+
+
+    def _get_keep_regex(self, caption, comment_id):
+        pattern1 = r'\b(?:Keep|keep)\s+(\S+)\s+(\d+)\s+(\S+)\b'
+        pattern2= r'(\S+)\s+(\S+)\s+(?:Keep|keep)\s+(\d+)'
+        pattern3= r'(?:Keep|keep)\s+(\d+)\s+(\S+)\s+(\S+)'
+        pattern4= r'(?:Keep|keep)\s+(\S+)\s+(\S+)'
+        pattern6= r'^(Keep|keep)\s+(\d+)$'
+        matches1 = re.search(pattern1, caption)
+        matches2 = re.search(pattern2, caption)
+        matches3 = re.search(pattern3, caption)
+        matches4 = re.search(pattern4, caption)
+        matches6 = re.search(pattern6, caption)
+        matches5 = re.findall(r'\b[Kk]eep\b', caption)
+        if matches1:
+            attachment_obj = self.env['sgeede.facebook.attachment'].search([('id_attachment','=',comment_id.id_attachment),('post_id','=',comment_id.post_id.id)], limit=1)
+            if attachment_obj:
+                comment_id.product_id = attachment_obj.product_id.id
+                comment_id.is_keep_order = True
+                self._create_keep_order(comment_id, matches1.group(2), matches1.group(3))
+                comment_id.is_valid = True
+                self.reply_comment_post(comment_id)
+                return True
+        if matches2:
+            attachment_obj = self.env['sgeede.facebook.attachment'].search([('id_attachment','=',comment_id.id_attachment),('post_id','=',comment_id.post_id.id)], limit=1)
+            if attachment_obj:
+                comment_id.product_id = attachment_obj.product_id.id
+                comment_id.is_keep_order = True
+                self._create_keep_order(comment_id, matches2.group(3), matches2.group(2))
+                comment_id.is_valid = True
+                self.reply_comment_post(comment_id)
+                return True
+        if matches3:
+            attachment_obj = self.env['sgeede.facebook.attachment'].search([('id_attachment','=',comment_id.id_attachment),('post_id','=',comment_id.post_id.id)], limit=1)
+            if attachment_obj:
+                comment_id.product_id = attachment_obj.product_id.id
+                comment_id.is_keep_order = True
+                self._create_keep_order(comment_id, matches3.group(1), matches3.group(3))
+                comment_id.is_valid = True
+                self.reply_comment_post(comment_id)
+                return True
+        if matches4:
+            attachment_obj = self.env['sgeede.facebook.attachment'].search([('id_attachment','=',comment_id.id_attachment),('post_id','=',comment_id.post_id.id)], limit=1)
+            if attachment_obj:
+                comment_id.product_id = attachment_obj.product_id.id
+                comment_id.is_keep_order = True
+                self._create_keep_order(comment_id, 1.0, matches4.group(2))
+                comment_id.is_valid = True
+                self.reply_comment_post(comment_id)
+                return True
+        else:
+            if not comment_id.is_replied:
+                api_url = "https://graph.facebook.com/v19.0/"
+                comment_id.post_id.page_id.cron_generate_token_data()
+                api_post_comment = api_url+comment_id.post_id.page_id.page_id+"/messages?access_token="+comment_id.post_id.page_id.page_token
+                messager_obj =  self.env['whatsapp.template'].search([('template_name','=','customer_komentar_ulang')], limit=1)
+                send_message_obj = self.env['whatsapp.composer'].create({
+                        'wa_template_id': messager_obj.id,
+                        'phone':comment_id.partner_id.mobile,
+                        'res_ids': comment_id.ids,
+                        'res_model': 'sgeede.facebook.comment',
+                    })
+                body = send_message_obj._get_html_preview_whatsapp(rec=comment_id)
+                headers = {
+                        'Content-Type': 'application/json', 
+                    }
+                reply_message = {
+                    "recipient":{
+                        "id":comment_id.partner_id.facebook_account_id
+                    },
+                    "messaging_type": "MESSAGE_TAG",
+                    "tag": "POST_PURCHASE_UPDATE",
+                    "message":{
+                        "text": html2text.html2text(body)
+                    }
+                }
+                response = requests.post(api_post_comment, headers=headers, data=json.dumps(reply_message))
+                if response.status_code == 200:
+                    comment_id.is_replied = True
+                print("check_respoanse", response)
+        # if matches6:
+        #     attachment_obj = self.env['sgeede.facebook.attachment'].search([('id_attachment','=',comment_id.id_attachment),('post_id','=',comment_id.post_id.id)], limit=1)
+        #     if attachment_obj:
+        #         comment_id.product_id = attachment_obj.product_id.id
+        #         comment_id.is_keep_order = True
+        #         print("check_mtches")
+        #         self._create_keep_order(comment_id, matches6.group(2), False)
+        #         comment_id.is_valid = True
+        #         self.reply_comment_post(comment_id)
+        #         return True
+        # if matches5:
+        #     attachment_obj = self.env['sgeede.facebook.attachment'].search([('id_attachment','=',comment_id.id_attachment),('post_id','=',comment_id.post_id.id)], limit=1)
+        #     if attachment_obj:
+        #         comment_id.product_id = attachment_obj.product_id.id
+        #         comment_id.is_keep_order = True
+        #         self._create_keep_order(comment_id, 1.0, False)
+        #         comment_id.is_valid = True
+        #         self.reply_comment_post(comment_id)
+            return True
+        
+        
+    def _create_keep_order(self, comment_id, pce, size):
+        comment_obj = self.env['my.future.keep.order'].search([('comment_id','=',comment_id.id)])
+        if not comment_id.partner_id.is_blacklist_customer:
+            if comment_id.is_keep_order and not comment_obj:
+                size_obj = False
+                if size:
+                    size_data = self.env['my.future.product.size'].search([('name','ilike',size)], limit=1)
+                    if size_data in comment_id.product_id.size_ids:
+                        size_obj = size_data
+                order_obj = self.env['my.future.keep.order'].create({
+                    'partner_id': comment_id.partner_id.id,
+                    'keep_datetime': comment_id.created_comment_time,
+                    'product_id': comment_id.product_id.id if comment_id.product_id else False,
+                    'comment_id': comment_id.id,
+                    'quantity': pce,
+                    'size_id': size_obj.id if size_obj else False,
+                    })
+                self.send_customer_message(order_obj)
+            elif comment_obj:
+                size_obj = False
+                size_data = self.env['my.future.product.size'].search([('name','ilike',size)], limit=1)
+                if size_data in comment_id.product_id.size_ids:
+                    size_obj = size_data
+                comment_obj.write({
+                    'partner_id': comment_id.partner_id.id,
+                    'keep_datetime': comment_id.created_comment_time,
+                    'product_id': comment_id.product_id.id if comment_id.product_id else False,
+                    'comment_id': comment_id.id,
+                    'quantity': pce,
+                    'size_id': size_obj.id if size_obj else False,
+                    })
+                self.send_customer_message(comment_obj)
+        elif not comment_obj and comment_id.partner_id.is_blacklist_customer and not comment_id.partner_id.is_announced:
+                template_id =  self.env['whatsapp.template'].search([('template_name','=','blacklist_customer_message')], limit=1)
+                send_message_obj = self.env['whatsapp.composer'].create({
+                            'wa_template_id': template_id.id,
+                            'phone':comment_id.partner_id.mobile,
+                            'res_ids': comment_id.partner_id.ids,
+                            'res_model': 'res.partner',
+                        })
+                send_message_obj.action_send_message_my_future()
+                comment_id.partner_id.is_announced = True
+     
+
+    def create_comment(self, post_id, page_id):
+        comments = self.get_all_comments(post_id, page_id)
+        if comments:
+            for comment in comments:
+                get_same_comment = self.search([('comment_id','=', comment['id']),('post_id','=',post_id.id)])
+                sender_comment = False
+                sender_comment_id = False
+                timestamp_str = comment['created_time']
+                formatted_timestamp = timestamp_str.replace("T", " ")
+                formatted_timestamp = formatted_timestamp.replace("+0000", "")
+                datetime_obj = datetime.strptime(formatted_timestamp, "%Y-%m-%d %H:%M:%S")
+                comment_user = None
+                if 'from' in comment:
+                    sender_comment = comment['from']['name']
+                    sender_comment_id = comment['from']['id']
+                    comment_user = self.env['res.partner'].search([('facebook_account_id','=',sender_comment_id)])
+                    if not comment_user:
+                        comment_user = self.env['res.partner'].create({
+                            'name': sender_comment,
+                            'facebook_account_id': sender_comment_id,
+                            'customer_rank': 1,
+                            'supplier_rank': 0,
+                        })
+                if not get_same_comment:
+                    comment_obj = self.create({
+                        'partner_id': comment_user.id if comment_user != None else False,
+                        'name': comment['message'],
+                        'comment_id': comment['id'],
+                        'sender': sender_comment,
+                        'sender_comment_id': sender_comment_id,
+                        'created_comment_time': datetime_obj,
+                        'post_id': post_id.id,
+                        'id_attachment': comment['id_attachment'] if 'id_attachment' in comment else '',
+                    })
+                    self._get_keep_regex(comment_obj.name, comment_obj)
+                else:
+                    get_same_comment.update({
+                        'partner_id': comment_user.id if comment_user != None else False,
+                        'name': comment['message'],
+                        'comment_id': comment['id'],
+                        'sender': sender_comment,
+                        'sender_comment_id': sender_comment_id,
+                        'created_comment_time': datetime_obj,
+                        'post_id': post_id.id,
+                        'id_attachment': comment['id_attachment'] if 'id_attachment' in comment else '',
+
+                    })
+                    self._get_keep_regex(get_same_comment.name, get_same_comment)
+    sgeede_facebook_comment.create_comment = create_comment
+
+    # def check_valid_comment_to_reply(self, comment):
+    #     comment.is_valid = True
+    #     self.reply_comment_post(comment)
+
+                    
+
+    def reply_comment_post(self, comment):
+        try:
+            api_url = "https://graph.facebook.com/v19.0/"
+            comment.post_id.page_id.cron_generate_token_data()
+            api_post_comment = api_url+comment.post_id.page_id.page_id+"/messages?access_token="+comment.post_id.page_id.page_token
+            post_json = False
+            if not comment.partner_id.can_interaction:
+                # messager_obj =  self.env['whatsapp.template'].search([('template_name','=','request_balasan')], limit=1)
+                # body = self.create_message_composer(messager_obj, comment, 'res.partner')
+                headers = {
+                    'Content-Type': 'application/json', 
+                }
+                reply_message = {
+                    "recipient":{
+                        "comment_id":comment.comment_id.split("_")[1]
+                    },
+                    "messaging_type": "RESPONSE",
+                    "message": {
+                        "text": "Hi %s, Kamu baru saja mengomentari postingan di page kami, Jika kamu melakukan pesanan, harap izinkan kami terus mengirimkan pesan kepada kamu, dengan membalas pesan ini."%comment.partner_id.name,
+                        "quick_replies": [
+                        {
+                            "content_type": "text",
+                            "title": "Ok",
+                            "payload": "DEVELOPER_DEFINED_PAYLOAD_FOR_PICKING_GREEN",
+                            "image_url": "http://example.com/img/green.png"
+                        }
+                        ]
+                    }
+                }
+                response = requests.post(api_post_comment, headers=headers, data=json.dumps(reply_message))
+                post_json = response.json()
+                if response.status_code == 200:
+                    comment.partner_id.can_interaction = True
+                print("check response", response.status_code, comment.comment_id, comment.partner_id.name, comment.partner_id.can_interaction)
+        except requests.RequestException as e:
+            print('Graph returned an error:', e)
+
+        # if 'id' not in post_json:
+        #     self.env['sgeede.facebook.api.log'].create({
+        #         'name': 'Reply Comment',
+        #         'page_id': comment.post_id.page_id.id,
+        #         'running_date': datetime.now(),
+        #         'state': 'failed',
+        #         'message': post_json,
+        #     })
+        #     return False
+        # self.env['sgeede.facebook.api.log'].create({
+        #     'name': 'Reply Comment',
+        #     'page_id': comment.post_id.page_id.id,
+        #     'running_date': datetime.now(),
+        #     'state': 'success',
+        #     'message': post_json,
+        # })
+        return True
+        
+    def send_customer_message(self, order):
+        if order.partner_id.can_interaction and order.is_confirmed == False:
+            api_url = "https://graph.facebook.com/v19.0/"
+            order.comment_id.post_id.page_id.cron_generate_token_data()
+            api_post_comment = api_url+order.comment_id.post_id.page_id.page_id+"/messages?access_token="+order.comment_id.post_id.page_id.page_token
+            body = ""
+            if order.partner_id.mobile:
+                messager_obj =  self.env['whatsapp.template'].search([('template_name','=','messanger_confirm_keep_order')], limit=1)
+                send_message_obj = self.env['whatsapp.composer'].create({
+                        'wa_template_id': messager_obj.id,
+                        'phone':order.partner_id.mobile,
+                        'res_ids': order.ids,
+                        'res_model': 'my.future.keep.order',
+                    })
+                body = send_message_obj._get_html_preview_whatsapp(rec=order)
+                order.state = 'keep'
+            else:
+                messager_obj =  self.env['whatsapp.template'].search([('template_name','=','messanger_request_number_phone')], limit=1)
+                send_message_obj = self.env['whatsapp.composer'].create({
+                        'wa_template_id': messager_obj.id,
+                        'phone':order.partner_id.mobile,
+                        'res_ids': order.partner_id.ids,
+                        'res_model': 'res.partner',
+                    })
+                body = send_message_obj._get_html_preview_whatsapp(rec=order.partner_id)
+                order.state = 'waiting_wa'
+
+            headers = {
+                    'Content-Type': 'application/json', 
+                }
+            reply_message = {
+                "recipient":{
+                    "id":order.partner_id.facebook_account_id
+                },
+                "messaging_type": "MESSAGE_TAG",
+                "tag": "POST_PURCHASE_UPDATE",
+                "message":{
+                    "text": html2text.html2text(body)
+                }
+            }
+            response = requests.post(api_post_comment, headers=headers, data=json.dumps(reply_message))
+            if response.status_code == 200 and order.state != 'waiting_wa':
+                order.is_confirmed = True
+            elif response.status_code == 200 and order.state == 'waiting_wa':
+                order.is_confirmed = False
+            else:
+                order.partner_id.can_interaction = False
+            print("check response2", response, api_post_comment)
+        else:
+            print("check response customer is not avaliable")
+
+        
+
+    def _get_keep_regex_live(self, caption, comment_id):
+        pattern1 = r'^(Keep|keep)\s+(\d+)\s+(\w+)$'
+        pattern2= r'^(Keep|keep)\s+(\w+)\s+(\d+)$'
+        pattern3= r'^(Keep|keep)\s+(\d+)$'
+        matches1 = re.search(pattern1, caption)
+        matches2 = re.search(pattern2, caption)
+        matches3 = re.search(pattern3, caption)
+        matches5 = re.findall(r'\b[Kk]eep\b', caption)
+        if matches1:
+            if not comment_id.product_id:
+                comment_id.product_id = comment_id.live_id.active_product.id
+                comment_id.is_keep_order = True
+            if comment_id.partner_id.mobile:
+                self._create_keep_order(comment_id, matches1.group(2), matches1.group(3))
+            else:
+                self.check_valid_comment_to_reply(comment_id)
+            return True
+        if matches2:
+            if not comment_id.product_id:
+                comment_id.product_id = comment_id.live_id.active_product.id
+                comment_id.is_keep_order = True
+            if comment_id.partner_id.mobile:
+                self._create_keep_order(comment_id, matches2.group(3), matches2.group(2))
+            else:
+                self.check_valid_comment_to_reply(comment_id)
+            return True
+        if matches3:
+            if not comment_id.product_id:
+                comment_id.product_id = comment_id.live_id.active_product.id
+                comment_id.is_keep_order = True
+            if comment_id.partner_id.mobile:
+                self._create_keep_order(comment_id, matches3.group(2), False)
+            else:
+                self.check_valid_comment_to_reply(comment_id)
+            return True
+        if matches5:
+            if not comment_id.product_id:
+                comment_id.product_id = comment_id.live_id.active_product.id
+                comment_id.is_keep_order = True
+            if comment_id.partner_id.mobile:
+                self._create_keep_order(comment_id, 1.0, False)
+            else:
+                self.check_valid_comment_to_reply(comment_id)
+            return True
+
+
+class sgeede_facebook_live(models.Model):
+    _inherit = "sgeede.facebook.live"
+
+    active_product = fields.Many2one('product.product', "Active Product")
+
+    def create_comment(self):
+        comments = self.get_all_comments()
+        for comment in comments:
+            sender_comment = False
+            sender_comment_id = False
+            if self.sum_comment > 0:
+                if comment['id'] in [comment.comment_id for comment in self.comment_ids]:
+                    continue
+            timestamp_str = comment['created_time']
+            formatted_timestamp = timestamp_str.replace("T", " ")
+            formatted_timestamp = formatted_timestamp.replace("+0000", "")
+            datetime_obj = datetime.strptime(formatted_timestamp, "%Y-%m-%d %H:%M:%S")
+            comment_user = None
+            if 'from' in comment:
+                sender_comment = comment['from']['name']
+                sender_comment_id = comment['from']['id']
+                comment_user = self.env['res.partner'].search([('facebook_account_id','=',sender_comment_id)])
+                if not comment_user:
+                    comment_user = self.env['res.partner'].create({
+                            'name': sender_comment,
+                            'facebook_account_id': sender_comment_id,
+                            'customer_rank': 1,
+                            'supplier_rank': 0,
+                        })
+            comment_live = self.comment_ids.create({
+                'partner_id': comment_user.id if comment_user != None else False,
+                'name': comment['message'],
+                'comment_id': comment['id'],
+                'sender': sender_comment,
+                'sender_comment_id': sender_comment_id,
+                'created_comment_time': datetime_obj,
+                'live_id': self.id,
+            })
+            # self.check_valid_comment(comment_live)
+            now = datetime.datetime.now()
+            if now >= comment_live.created_comment_time + datetime.timedelta(minutes=1):
+                comment_live._get_keep_regex(comment_live.name, comment_live)
+
+
+class sgeede_facebook_product(models.Model):
+    _inherit = "sgeede.facebook.product"
+
+    is_active_product = fields.Boolean("Active Product")
+    size_ids = fields.Many2many('my.future.product.size', 'product_id', string='Size', related="product_id.size_ids")
+    code_product = fields.Char("Code", related="product_id.default_code")
+

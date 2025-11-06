@@ -1,0 +1,11 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+
+access_sgeede_facebook_page,sgeede.facebook.page,model_sgeede_facebook_page,,1,1,1,1
+access_sgeede_facebook_live,sgeede.facebook.live,model_sgeede_facebook_live,,1,1,1,1
+access_sgeede_facebook_comment,sgeede.facebook.comment,model_sgeede_facebook_comment,,1,1,1,1
+access_sgeede_facebook_post,sgeede.facebook.post,model_sgeede_facebook_post,,1,1,1,1
+access_sgeede_facebook_attachment,sgeede.facebook.attachment,model_sgeede_facebook_attachment,,1,1,1,1
+access_sgeede_facebook_product,sgeede.facebook.product,model_sgeede_facebook_product,,1,1,1,1
+access_sgeede_facebook_api_log,sgeede.facebook.api.log,model_sgeede_facebook_api_log,,1,1,1,1
+access_sgeede_facebook_reply_comment,sgeede.facebook.reply.comment,model_sgeede_facebook_reply_comment,,1,1,1,1
+access_sgeede_facebook_get_post,sgeede.facebook.get.post,model_sgeede_facebook_get_post,,1,1,1,1

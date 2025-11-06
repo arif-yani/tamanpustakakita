@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="myfuture_barode_dashboard_action" model="ir.actions.client">
+        <field name="name">Dashboard Scan</field>
+        <field name="target">current</field>
+        <field name="tag">DashboardScanLabel.tag</field>
+    </record>
+
+</odoo>

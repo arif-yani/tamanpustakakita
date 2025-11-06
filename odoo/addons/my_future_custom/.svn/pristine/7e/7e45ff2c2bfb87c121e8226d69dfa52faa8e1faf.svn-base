@@ -1,0 +1,25 @@
+import re
+import logging
+
+from ast import literal_eval
+
+from odoo import api, fields, models, _
+from odoo.exceptions import ValidationError, RedirectWarning
+from odoo.addons.phone_validation.tools import phone_validation
+from odoo.http import request, Response
+from odoo.addons.my_future_custom.controllers.main import MyFutureControllers
+
+_logger = logging.getLogger(__name__)
+
+
+class WhatsAppComposer(models.TransientModel):
+    _inherit = 'whatsapp.composer'
+    _description = 'Send WhatsApp Wizard'
+
+
+    def action_send_message_my_future(self):
+        records = self._get_active_records()
+        for rec in records:
+            formatted_phone_number = re.sub(r'\s+|-', '', self.phone)
+            body = self._get_html_preview_whatsapp(rec=rec)
+            MyFutureControllers.web_request_wa_send_message(rec, formatted_phone_number, body)

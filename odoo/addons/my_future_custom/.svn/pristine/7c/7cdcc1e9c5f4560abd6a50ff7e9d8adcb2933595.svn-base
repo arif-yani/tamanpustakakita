@@ -1,0 +1,15 @@
+from odoo import api, fields, models, tools, _
+from odoo.exceptions import UserError, ValidationError
+
+class AccountPayment(models.Model):
+    _inherit = 'account.payment'
+
+    mobile = fields.Char('No Whatsapp', related="partner_id.mobile", readonly=False)
+    partner_id = fields.Many2one(
+        comodel_name='res.partner',
+        string="Customer",
+        store=True, readonly=False, ondelete='restrict',
+        compute='_compute_partner_id',
+        domain="['|', ('parent_id','=', False), ('is_company','=', True)]",
+        tracking=True,
+        check_company=True)

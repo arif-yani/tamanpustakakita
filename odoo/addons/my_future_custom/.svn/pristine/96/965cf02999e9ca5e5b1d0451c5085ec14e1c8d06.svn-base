@@ -1,0 +1,413 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <template id="report_invoice">
+        <t t-call="web.basic_layout">
+            <div class="page">
+                <t t-foreach="docs" t-as="doc">
+                    <div class="header">
+                        <!-- <style>
+                            @font-face {
+                                    font-family: Times-New-Roman;
+                                    src: url('/longtime_custom/static/src/font/Times-New-Roman.otf') format("opentype");
+                                }
+                            @font-face {
+                                    font-family: SwitzeraADF-Regular;
+                                    src: url('/longtime_custom/static/src/font/SwitzeraADF-Regular.otf') format("opentype");
+                                }
+                            @font-face {
+                                font-family: Rational;
+                                src: url('/longtime_custom/static/src/font/Rational.otf') format("opentype");
+                            }
+                            .header_style {
+                                margin: 0;
+                                font-size: 14px;
+                                text-align: center;
+                                font-family: Times-New-Roman;
+                                color: #00007d;
+                            }
+                        </style> -->
+                        <!-- <t t-set="company_detail" t-value="''"/>
+                        <t t-if="doc.company_id.street and doc.company_id.city and doc.company_id.zip and doc.company_id.country_id">
+                            <t t-set="company_detail" t-value="doc.company_id.street+ ' - ' +doc.company_id.city+ ' ' +doc.company_id.zip+ ' - ' +doc.company_id.country_id.name"/>
+                        </t>
+
+                        <t t-set="phone_detail" t-value="''"/>
+                        <t t-if="doc.company_id.phone">
+                            <t t-set="phone_detail" t-value="'Telp. ' +doc.company_id.phone"/>
+                        </t>
+
+                        <t t-set="web_detail" t-value="''"/>
+                        <t t-if="doc.company_id.email and doc.company_id.website">
+                            <t t-set="web_detail" t-value="'Email : ' +doc.company_id.email+ '     Website : ' +doc.company_id.website.replace('http://', '')"/>
+                        </t> -->
+
+                        <!-- <div class="row">
+                            <div class="col-2" style="text-align:right;">
+                                <img src="/longtime_custom/static/src/img/logo.jpeg" style="margin-top:10px;max-height:110px;" alt="Logo"/>
+                            </div>
+                            <div class="col-9">
+                                <img src="/longtime_custom/static/src/img/header.png" style="max-width: 100%;" alt="Header"/>
+                                <br/>
+                                <span>
+                                    <p class="header_style">Welding Materials, Fasteners, Pipe Fittings, Electricals, Tools &amp; General Hardware</p>
+                                </span>
+                                <t t-if="company_detail">
+                                    <p class="header_style" t-esc="company_detail"/>
+                                </t>
+                                <t t-else="">
+                                    <p class="header_style">Ruko Fanindo Blok E No. 12 - 12A Tg. Uncang - Batam 29422 - Indonesia</p>
+                                </t>
+
+
+                                <t t-if="phone_detail">
+                                    <p class="header_style" t-esc="phone_detail" />
+                                </t>
+                                <t t-else="">
+                                    <p class="header_style">Telp. 0778) 3581 302, 3581 232, 743 2318</p>
+                                </t>
+
+
+                                <t t-if="web_detail">
+                                    <p class="header_style" t-esc="web_detail"/>
+                                </t>
+                                <t t-else="">
+                                    <p class="header_style">Email : longtimebatam@gmail.com Website : www.longtime.co.id</p>
+                                </t>
+                            </div>
+                            <div class="col-1"></div>
+                        </div> -->
+                        <div class="row">
+                            <div class="col-12">
+                                <br/>
+                                <div style="border-bottom: 2px solid black;"/>
+                                <div style="margin-top:3px;border-bottom: 1px solid black;"/>
+                            </div>
+                        </div>
+                        <br/>
+                        
+                   </div>
+                   <t t-set="total_discount" t-value="0"/>
+                   <t t-set="total" t-value="0.00"/>
+                    <t t-set="total_baju" t-value="0"/>
+                   <div class="page" style="">
+                        <div class="row">
+                            <h3 style="text-align: center; font-family: 'Rational';"><b>MY FUTURE</b></h3>
+                        </div>
+                        <table width="100%" style="border: 0px solid white;">
+                            <tr>
+                                <td width="50%">
+                                    <table width="100%" style="border: 0px solid white;font-size: 18px;">
+                                        <tr>
+                                            <td width="35%" style="font-family: 'SwitzeraADF-Regular';">Nama Cust</td>
+                                            <td width="5%" style="font-family: 'SwitzeraADF-Regular';">:</td>
+                                            <td width="60%">
+                                                <b><span t-field="doc.partner_id.name" style=""/></b>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td width="35%" style="font-family: 'SwitzeraADF-Regular';">Alamat</td>
+                                            <td width="5%" style="font-family: 'SwitzeraADF-Regular';">:</td>
+                                            <td width="60%">
+                                                <t t-if="doc.partner_id.street">
+                                                    <span t-field="doc.partner_id.street"/>
+                                                </t>
+                                                <t t-if="doc.partner_id.street2">
+                                                    <span t-field="doc.partner_id.street2"/>,
+                                                </t>
+                                                <t t-if="doc.partner_id.state_id">
+                                                    <span t-field="doc.partner_id.state_id"/>
+                                                </t>
+                                                <t t-if="doc.partner_id.zip">
+                                                    <span t-field="doc.partner_id.zip"/>
+                                                </t>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td width="35%" style="font-family: 'SwitzeraADF-Regular';">Kota</td>
+                                            <td width="5%" style="font-family: 'SwitzeraADF-Regular';">:</td>
+                                            <td width="60%">
+                                                <t t-if="doc.partner_id.kota_id">
+                                                    <span t-field="doc.partner_id.kota_id.name"/>
+                                                </t>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td width="35%" style="font-family: 'SwitzeraADF-Regular';">Kecamatan</td>
+                                            <td width="5%" style="font-family: 'SwitzeraADF-Regular';">:</td>
+                                            <td width="60%">
+                                                <t t-if="doc.partner_id.kecamatan_id">
+                                                    <span t-field="doc.partner_id.kecamatan_id.name"/>
+                                                </t>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td width="35%" style="font-family: 'SwitzeraADF-Regular';">No Hp Cust</td>
+                                            <td width="5%" style="font-family: 'SwitzeraADF-Regular';">:</td>
+                                            <td width="60%">
+                                                <span t-field="doc.partner_id.mobile" style=""/>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </td>
+                                <td width="5%"/>
+                                <td width="45%">
+                                    <table width="100%" style="border: 0px solid white;font-size: 18px;">
+                                        <tr>
+                                            <td width="35%" style="font-family: 'SwitzeraADF-Regular';">Invoice No</td>
+                                            <td width="5%" style="font-family: 'SwitzeraADF-Regular';">:</td>
+                                            <td width="60%" style="font-family: 'SwitzeraADF-Regular';">
+                                                <t t-if="doc.state=='draft' and 'INV' not in doc.name">
+                                                    <span>Draft Invoice</span>
+                                                </t>
+                                                <t t-else="">
+                                                    <t t-esc="doc.name"/>
+                                                </t>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td width="35%" style="font-family: 'SwitzeraADF-Regular';">Tanggal</td>
+                                            <td width="5%" style="font-family: 'SwitzeraADF-Regular';">:</td>
+                                            <td width="60%" style="font-family: 'SwitzeraADF-Regular';">
+                                                <t t-if="doc.invoice_date">
+                                                    <span t-field="doc.invoice_date"/>
+                                                </t>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td width="35%" style="font-family: 'SwitzeraADF-Regular';">Ongkir Per KG</td>
+                                            <td width="5%" style="font-family: 'SwitzeraADF-Regular';">:</td>
+                                            <td width="60%" style="font-family: 'SwitzeraADF-Regular';">
+                                                <span t-field="doc.harga_ongkir"/>
+                                            </td>
+                                        </tr>
+
+                                        <tr>
+                                            <td width="35%" style="font-family: 'SwitzeraADF-Regular';">Sisa DP</td>
+                                            <td width="5%" style="font-family: 'SwitzeraADF-Regular';">:</td>
+                                            <td width="60%">
+                                                <span t-field="doc.sisa_dp"  t-options='{"widget": "float", "precision": 0}'/>
+                                            </td>
+                                        </tr>
+
+                                        <tr>
+                                            <td width="35%" style="font-family: 'SwitzeraADF-Regular';">Hutang</td>
+                                            <td width="5%" style="font-family: 'SwitzeraADF-Regular';">:</td>
+                                            <td width="60%" style="font-family: 'SwitzeraADF-Regular';">
+                                                <span t-field="doc.hutang"  t-options='{"widget": "float", "precision": 0}'/>
+                                            </td>
+                                        </tr>
+                                         <tr>
+                                            <td width="35%" style="font-family: 'SwitzeraADF-Regular';">Titipan</td>
+                                            <td width="5%" style="font-family: 'SwitzeraADF-Regular';">:</td>
+                                            <td width="60%" style="font-family: 'SwitzeraADF-Regular';">
+                                                <span t-field="doc.titipan"/>
+                                            </td>
+                                        </tr>
+                                    </table>           
+                                </td>
+                            </tr>
+                        </table>
+                        <table style="border-bottom:2px solid black; border-top: 2px solid black; border-right: 0px solid transparent; border-left: 0px solid transparent;" width="100%">
+                            <tr height="30px;">
+                                <td width="30%" style="vertical-align: middle; text-align: center; font-weight: bold;font-size: 15px;">Nama Barang</td>
+                                <td width="10%" style="vertical-align: middle; text-align: center; font-weight: bold;font-size: 15px;">Kode Barang</td>
+                                <td width="15%" style="vertical-align: middle; text-align: center; font-weight: bold;font-size: 15px;">Warna</td>
+                                <td width="10%" style="vertical-align: middle; text-align: center; font-weight: bold;font-size: 15px;">Size</td>
+                                <td width="10%" style="vertical-align: middle; text-align: center; font-weight: bold;font-size: 15px;">Per Pcs</td>
+                                <td width="10%" style="vertical-align: middle; text-align: center; font-weight: bold;font-size: 15px;">Kilo</td>
+                                <td width="15%" style="vertical-align: middle; text-align: center; font-weight: bold;font-size: 15px;">Harga</td>
+                            </tr>
+                        </table>
+                        <table style="margin-top: 3px; margin-bottom: 3px; border-bottom:2px solid black;border-top: 0px solid transparent; border-right: 0px solid transparent; border-left: 0px solid transparent;" width="100%">
+                            <tbody class="" >
+                                <t t-foreach="doc.invoice_line_ids" t-as="line">
+                                <t t-set="total_baju" t-value="total_baju+line.quantity"/>
+                                    <tr t-if="line.product_id">
+                                        <td width="30%" style="vertical-align: top; text-align: left; color: black; font-size: 15px;">
+                                           <span t-esc="line.name"/>
+                                        </td>
+                                        <td width="10%" style="vertical-align: top; text-align: center; color: black; font-size: 15px;">
+                                            <t t-if="line.product_id.default_code">
+                                                <span t-field="line.product_id.default_code"/>
+                                            </t>
+                                        </td>
+                                        <td width="15%" style="vertical-align: top; text-align: center; color: black; font-size: 15px;">
+                                            <t t-if="line.product_id.color">
+                                               <span t-field="line.product_id.color"/> 
+                                            </t>
+                                        </td>
+                                        <td width="10%" style="vertical-align: top; text-align: center; color: black; font-size: 15px;">
+                                           <span t-field="line.size_id.name"/>
+                                        </td>
+                                        <td width="10%" style="vertical-align: top; text-align: center; color: black; font-size: 15px;">
+                                           <span t-field="line.quantity"/>
+                                        </td>
+                                        <td width="10%" style="vertical-align: top; text-align: right; color: black; font-size: 15px;">
+                                           <span t-field="line.weight"/>
+                                        </td>
+                                         <td width="15%" style="vertical-align: top; text-align: right; color: black; font-size: 15px;">
+                                               <span t-field="line.price_subtotal"/> 
+                                        </td>
+                                    </tr>
+                                </t>
+                            </tbody>
+                        </table>
+                    <!-- </div> -->
+
+
+                    <!-- <div class="footer"> -->
+                        <div class="mt-1" style="display: table;width: 100%;" name="signature">
+                         <div class="row" style="">
+                             <div class="col-7"/>
+                             <div class="col-5" style="margin-top: 5px;">
+                                <table width="100%" style="border: 0px solid white;font-size: 16px;">
+                                    <tr>
+                                        <td width="40%">
+                                            <span>Titipan</span>
+                                        </td>
+                                        <td width="5%">
+                                            <span>:</span>
+                                        </td>
+                                        <td width="5%">
+                                            <!-- <span t-esc="doc.currency_id.name"/> -->
+                                        </td>
+                                        <td style="text-align: right;">
+                                            <span t-esc="doc.titipan"/>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td width="40%">
+                                            <span>Total Baju</span>
+                                        </td>
+                                        <td width="5%">
+                                            <span>:</span>
+                                        </td>
+                                        <td width="5%">
+                                            <!-- <span t-esc="doc.currency_id.name"/> -->
+                                        </td>
+                                        <td style="text-align: right;">
+                                            <span t-esc="total_baju"/>
+                                        </td>
+                                    </tr> 
+                                    <tr>
+                                        <td width="40%">
+                                            <span>Total Uang Baju</span>
+                                        </td>
+                                        <td width="5%">
+                                            <span>:</span>
+                                        </td>
+                                        <td width="5%">
+                                            <span t-esc="doc.currency_id.name"/>
+                                        </td>
+                                        <td style="text-align: right;">
+                                            <t t-if="total % 1 == 0">
+                                                <span t-esc="doc.amount_total" t-options='{"widget": "float", "precision": 0}'/>
+                                            </t>
+                                            <t t-else="">
+                                               <span t-esc="doc.amount_total"/>
+                                            </t>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td width="40%">
+                                            <span>Total Ongkir</span>
+                                        </td>
+                                        <td width="5%">
+                                            <span>:</span>
+                                        </td>
+                                        <td width="5%">
+                                            <span t-esc="doc.currency_id.name"/>
+                                        </td>
+                                        <td style="text-align: right;">
+                                            <t t-if="doc.total_ongkir % 1 == 0">
+                                                <span t-esc="doc.total_ongkir" t-options='{"widget": "float", "precision": 0}'/>
+                                            </t>
+                                            <t t-else="">
+                                               <span t-esc="doc.total_ongkir"/>
+                                            </t>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td width="40%">
+                                            <span>Hutang</span>
+                                        </td>
+                                        <td width="5%">
+                                            <span>:</span>
+                                        </td>
+                                        <td width="5%">
+                                            <span t-esc="doc.currency_id.name"/>
+                                        </td>
+                                        <td style="text-align: right;">
+                                            <t t-if="doc.hutang % 1 == 0">
+                                                <span t-esc="doc.hutang" t-options='{"widget": "float", "precision": 0}'/>
+                                            </t>
+                                            <t t-else="">
+                                               <span t-esc="doc.hutang"/>
+                                            </t>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td style="border-bottom: 2px solid black;">
+                                            <span>Potong DP</span>
+                                        </td>
+                                        <td style="border-bottom: 2px solid black;">
+                                            <span>:</span>
+                                        </td>
+                                        <td style="border-bottom: 2px solid black;">
+                                            <span t-esc="doc.currency_id.name"/>
+                                        </td>
+                                        <td style="text-align: right; border-bottom: 2px solid black;">
+                                            <t t-if="doc.sisa_dp % 1 == 0">
+                                                <span t-esc="doc.sisa_dp" t-options='{"widget": "float", "precision": 0}'/>
+                                            </t>
+                                            <t t-else="">
+                                               <span t-esc="doc.sisa_dp"/>
+                                            </t>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>
+                                            <b><span>GRAND TOTAL</span></b>
+                                        </td>
+                                        <td>
+                                            <b><span>:</span></b>
+                                        </td>
+                                        <td>
+                                            <b><span t-esc="doc.currency_id.name"/></b>
+                                        </td>
+                                        <td style="text-align: right; font-weight: bold;">
+                                            <t t-if="doc.amount_total % 1 == 0">
+                                                <b><span t-esc="'{:,.2f}'.format(doc.amount_total)"/> </b>
+                                            </t>
+                                            <t t-else="">
+                                               <b><span t-esc="'{:,.2f}'.format(doc.amount_total)"/> </b>
+                                            </t>
+                                        </td>
+                                    </tr>
+                                </table>
+
+                            </div>
+                        </div>
+                     </div>
+                     <br/>
+                    
+                </div>
+            </t>
+
+                
+            </div>
+        </t>
+    </template>
+
+
+
+    <template id="report_invoice_myfuture">
+        <t t-call="web.html_container">
+            <t t-call="my_future_custom.report_invoice"/>
+        </t>
+    </template>
+
+    </data>
+</odoo>

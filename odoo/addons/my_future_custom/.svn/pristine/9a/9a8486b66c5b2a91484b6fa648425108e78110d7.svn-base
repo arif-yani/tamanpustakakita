@@ -1,0 +1,10 @@
+import odoo.addons.decimal_precision as dp
+from odoo import api, fields, models, tools, _
+from odoo.exceptions import UserError, ValidationError
+import time
+from datetime import datetime, timedelta
+
+class ResPartner(models.Model):
+    _inherit = "res.partner"
+
+    is_blacklist_customer = fields.Boolean('Blacklist Customer', default=False)

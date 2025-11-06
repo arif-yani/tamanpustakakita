@@ -1,0 +1,53 @@
+# -*- encoding: utf-8 -*-
+from odoo import api, fields, models, tools, _
+from odoo.exceptions import UserError, ValidationError
+
+class ProductTemplate(models.Model):
+    _inherit = "product.template"
+
+    color = fields.Char("Color")
+    size_ids = fields.Many2many('my.future.product.size', 'product_id', string='Size')
+    default_code = fields.Char(string="Code")
+    detailed_type = fields.Selection(default="product")
+    type = fields.Selection(default="product")
+    
+class ProductProduct(models.Model):
+    _inherit = "product.product"
+
+    default_code = fields.Char(string="Code")
+
+    @api.constrains('weight')
+    def _check_weight(self):
+        for record in self:
+            if record.weight == 0.00 or record.weight == False:
+                raise ValidationError("Berat tidak boleh 0.00/Kosong.")
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        for vals in vals_list:
+            product_obj = self.search([('default_code','=',vals['default_code'])])
+            if product_obj:
+                raise ValidationError(_("Kode product %s sudah ada silahkan ganti dengan kode lain.") %vals['default_code'])
+        return super().create(vals_list)
+
+    @api.ondelete(at_uninstall=False)
+    def _unlink_except_posted(self):
+        # Prevent deleting lines on posted entries
+        keep_order_obj = self.env["my.future.keep.order"].search([('product_id','in', self.ids)])
+        if not self._context.get('force_delete') and keep_order_obj:
+            raise UserError(_("You can't delete a product have keep order record."))
+        
+class ProductSize(models.Model):
+    _name = "my.future.product.size"
+
+    name = fields.Char('Name', required=True)
+    lenght = fields.Float('Lenght (cm)')
+    width = fields.Float('Width (cm)')
+    height = fields.Float('Height (cm)')
+
+    @api.ondelete(at_uninstall=False)
+    def _unlink_except_posted(self):
+        # Prevent deleting lines on posted entries
+        keep_order_obj = self.env["my.future.keep.order"].search([('size_id','in', self.ids)])
+        if not self._context.get('force_delete') and keep_order_obj:
+            raise UserError(_("You can't delete a size have keep order record."))
