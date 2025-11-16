@@ -26,6 +26,12 @@ class AccountMove(models.Model):
 
     def action_set_dikembalikan(self):
         self.status_peminjaman = 'dikembalikan'
+        self.waktu_pengembalian = False
+
+    def set_terlambat(self):
+        for rec in self.search([('status_peminjaman','=','dipinjam')]):
+            if rec.waktu_pengembalian > date.today():
+                rec.status_peminjaman = 'terlambat'
 
 
     
