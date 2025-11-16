@@ -9,6 +9,10 @@ class AccountMove(models.Model):
     status_peminjaman = fields.Selection([('draft','Draft'),('dipinjam','Dipinjam'),('dikembalikan','Dikembalikan'),('terlambat','Terlambat')],
                                         default='draft',string='Status Peminjaman') 
     waktu_pengembalian = fields.Date(string="Waktu Pengembalian")
+    narration = fields.Html(
+        string='Terms and Conditions',
+        compute=False, store=True, readonly=False,
+    )
 
     @api.onchange('invoice_date')
     def onchange_invoice_date(self):
@@ -22,4 +26,7 @@ class AccountMove(models.Model):
 
     def action_set_dikembalikan(self):
         self.status_peminjaman = 'dikembalikan'
+
+
+    
         
