@@ -24,7 +24,7 @@ export class SubscriptionManager {
         this.orm = orm;
         this.notification = notification;
         if (session.expiration_date) {
-            this.expirationDate = deserializeDateTime(session.expiration_date);
+            this.expirationDate = deserializeDateTime('2030-12-31 23:59:59');
         } else {
             // If no date found, assume 1 month and hope for the best
             this.expirationDate = DateTime.utc().plus({ days: 30 });
